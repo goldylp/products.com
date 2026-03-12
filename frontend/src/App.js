@@ -23,7 +23,7 @@ function App() {
           </main>
           <CartPanel />
           <footer className="footer">
-            <p>&copy; 2026 Products Store. All rights reserved.</p>
+            <p>&copy; 2026 HealthFuel Store. All rights reserved.</p>
           </footer>
         </div>
       </Router>

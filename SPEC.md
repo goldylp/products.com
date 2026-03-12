@@ -2,7 +2,7 @@
 
 ## 1. Project Overview
 
-**Project Name:** Products Store
+**Project Name:** HealthFuel Store
 **Type:** Full-stack E-Commerce Web Application
 **Core Functionality:** Online shopping platform with product browsing, shopping cart, Stripe payment processing, and order management
 **Target Users:** Online shoppers looking to purchase products

@@ -57,17 +57,15 @@ body {
   color: var(--primary);
 }
 
-.logo-icon {
-  font-size: 1.75rem;
+.logo-img {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
 }
 
 .logo-text {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--secondary), var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .nav {
@@ -604,7 +602,7 @@ body {
   }
 
   .logo-text {
-    font-size: 1.2rem;
+    font-size: 1rem;
   }
 
   .hero {

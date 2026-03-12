@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import logo from '../images/logo.png';
 
 const Header = () => {
   const { cartCount, setIsCartOpen } = useCart();
@@ -9,8 +10,8 @@ const Header = () => {
     <header className="header">
       <div className="header-container">
         <Link to="/" className="logo">
-          <span className="logo-icon">🌿</span>
-          <span className="logo-text">Products Store</span>
+          <img src={logo} alt="HealthFuel Store" className="logo-img" />
+          <span className="logo-text">HealthFuel Store</span>
         </Link>
         <nav className="nav">
           <Link to="/" className="nav-link">Products</Link>
