@@ -63,11 +63,6 @@ body {
   object-fit: contain;
 }
 
-.logo-text {
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
 .nav {
   display: flex;
   align-items: center;
