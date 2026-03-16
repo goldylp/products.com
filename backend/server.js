@@ -24,7 +24,8 @@ mongoose.connect(MONGODB_URI)
 const productSchema = new mongoose.Schema({
   name:  { type: String, required: true },
   image: { type: String, required: true },
-  price: { type: Number, required: true }
+  price: { type: Number, required: true },
+  weight: { type: Number, default: 1 } // weight in pounds
 });
 const Product = mongoose.model('Product', productSchema);
 
@@ -57,6 +58,8 @@ const orderSchema = new mongoose.Schema({
     image:     String
   }],
   total:           { type: Number, required: true },
+  shippingCost:    { type: Number, default: 0 },
+  shippingMethod:  { type: String },
   stripePaymentId: { type: String, required: true },
   customerEmail:   { type: String },
   customerPhone:   { type: String },
@@ -263,6 +266,186 @@ app.post('/api/create-payment-intent', async (req, res) => {
     res.json({ clientSecret: paymentIntent.client_secret });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Shipping Routes ─────────────────────────────────────────────────────────
+
+// POST /api/shipping/rates - Get UPS shipping rates
+app.post('/api/shipping/rates', async (req, res) => {
+  try {
+    const { items, address } = req.body;
+
+    if (!items || items.length === 0) {
+      return res.status(400).json({ error: 'No items in cart' });
+    }
+
+    if (!address || !address.country || !address.state || !address.city || !address.zipCode) {
+      return res.status(400).json({ error: 'Complete shipping address required' });
+    }
+
+    // Calculate total weight (default to 1 lb if not specified)
+    const totalWeight = items.reduce((sum, item) => sum + (item.weight || 1) * item.quantity, 0);
+
+    // Get UPS credentials from environment
+    const UPS_API_KEY = process.env.UPS_API_KEY;
+    const UPS_USERNAME = process.env.UPS_USERNAME;
+    const UPS_PASSWORD = process.env.UPS_PASSWORD;
+    const UPS_SHIPPER_NUMBER = process.env.UPS_SHIPPER_NUMBER;
+
+    // If no UPS credentials, return mock rates for development
+    if (!UPS_API_KEY || !UPS_USERNAME || !UPS_PASSWORD) {
+      console.log('UPS credentials not configured, returning mock rates');
+      const mockRates = [
+        { service: 'UPS Ground', code: 'GROUND', price: 9.99, days: '5-7 business days' },
+        { service: 'UPS 3 Day Select', code: '3DAYSELECT', price: 19.99, days: '3 business days' },
+        { service: 'UPS 2nd Day Air', code: '2NDDAYAIR', price: 29.99, days: '2 business days' },
+        { service: 'UPS Next Day Air', code: 'NEXTDAYAIR', price: 49.99, days: '1 business day' }
+      ];
+      return res.json({ rates: mockRates, weight: totalWeight });
+    }
+
+    // Map country names to UPS country codes
+    const countryCodes = {
+      'United States': 'US',
+      'Canada': 'CA',
+      'United Kingdom': 'GB',
+      'Australia': 'AU',
+      'Germany': 'DE',
+      'France': 'FR',
+      'India': 'IN'
+    };
+
+    const originCountry = 'US';
+    const destCountry = countryCodes[address.country] || address.country;
+
+    // Build UPS Rating API request
+    const upsRequest = {
+      UPSSecurity: {
+        UsernameToken: {
+          Username: UPS_USERNAME,
+          Password: UPS_PASSWORD
+        },
+        ServiceAccessToken: {
+          AccessKey: UPS_API_KEY
+        }
+      },
+      RateRequest: {
+        Request: {
+          RequestOption: 'Shop',
+          TransactionReference: {
+            CustomerContext: 'Shipping Rate Request'
+          }
+        },
+        Shipment: {
+          Shipper: {
+            Name: 'HealthFuel Store',
+            ShipperNumber: UPS_SHIPPER_NUMBER || '',
+            Address: {
+              AddressLine: ['123 Store St'],
+              City: 'Los Angeles',
+              StateProvinceCode: 'CA',
+              PostalCode: '90001',
+              CountryCode: 'US'
+            }
+          },
+          ShipTo: {
+            CompanyName: 'Customer',
+            Address: {
+              AddressLine: [address.addressLine1],
+              City: address.city,
+              StateProvinceCode: address.state,
+              PostalCode: address.zipCode,
+              CountryCode: destCountry
+            }
+          },
+          ShipFrom: {
+            CompanyName: 'HealthFuel Store',
+            Address: {
+              AddressLine: ['123 Store St'],
+              City: 'Los Angeles',
+              StateProvinceCode: 'CA',
+              PostalCode: '90001',
+              CountryCode: 'US'
+            }
+          },
+          Package: [
+            {
+              PackagingType: {
+                Code: '02',
+                Description: 'Package'
+              },
+              PackageWeight: {
+                UnitOfMeasurement: {
+                  Code: 'LBS'
+                },
+                Weight: String(Math.ceil(totalWeight))
+              }
+            }
+          ]
+        }
+      }
+    };
+
+    // Make request to UPS Rating API
+    const response = await fetch('https://onlinetools.ups.com/api/rating/v1/Shop', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(upsRequest)
+    });
+
+    const data = await response.json();
+
+    if (data.Fault) {
+      console.error('UPS API Error:', data.Fault);
+      // Return mock rates on error
+      const fallbackRates = [
+        { service: 'UPS Ground', code: 'GROUND', price: 9.99 + (totalWeight * 0.5), days: '5-7 business days' },
+        { service: 'UPS 2nd Day Air', code: '2NDDAYAIR', price: 29.99 + (totalWeight * 0.5), days: '2 business days' }
+      ];
+      return res.json({ rates: fallbackRates, weight: totalWeight });
+    }
+
+    // Parse UPS response
+    const ratedShipments = data.RatedResponse?.RatedShipment || [];
+    const rates = ratedShipments.map(shipment => {
+      const serviceCode = shipment.Service?.Code;
+      const serviceNames = {
+        '01': 'UPS Next Day Air',
+        '02': 'UPS 2nd Day Air',
+        '03': 'UPS Ground',
+        '12': 'UPS 3 Day Select',
+        '14': 'UPS Next Day Air Early',
+        '59': 'UPS 2nd Day Air A.M.'
+      };
+
+      const transitTime = shipment.GuaranteedDelivery?.BusinessDaysInTransit
+        ? `${shipment.GuaranteedDelivery.BusinessDaysInTransit} business days`
+        : 'Varies';
+
+      return {
+        service: serviceNames[serviceCode] || `UPS Service ${serviceCode}`,
+        code: serviceCode,
+        price: parseFloat(shipment.TotalCharges?.MonetaryValue || 0),
+        days: transitTime
+      };
+    });
+
+    // Sort by price
+    rates.sort((a, b) => a.price - b.price);
+
+    res.json({ rates, weight: totalWeight });
+  } catch (err) {
+    console.error('Shipping rate error:', err);
+    // Return mock rates on exception
+    const mockRates = [
+      { service: 'UPS Ground', code: 'GROUND', price: 9.99, days: '5-7 business days' },
+      { service: 'UPS 2nd Day Air', code: '2NDDAYAIR', price: 29.99, days: '2 business days' }
+    ];
+    res.json({ rates: mockRates, weight: 1 });
   }
 });
 

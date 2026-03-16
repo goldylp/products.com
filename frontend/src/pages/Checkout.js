@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import {
@@ -60,6 +60,52 @@ const getCountryCode = (countryName) => {
     'Australia': 'AU', 'Germany': 'DE', 'France': 'FR', 'India': 'IN'
   };
   return codes[countryName] || countryName;
+};
+
+// Google Places API - Parse address components
+const parseAddressComponents = (addressComponents) => {
+  const result = {
+    addressLine1: '',
+    addressLine2: '',
+    country: '',
+    state: '',
+    city: '',
+    zipCode: ''
+  };
+
+  addressComponents.forEach(component => {
+    const types = component.types;
+    const longName = component.long_name;
+    const shortName = component.short_name;
+
+    if (types.includes('street_number')) {
+      result.addressLine1 = longName + ' ' + result.addressLine1;
+    }
+    if (types.includes('route')) {
+      result.addressLine1 += longName;
+    }
+    if (types.includes('subpremise')) {
+      result.addressLine2 = longName;
+    }
+    if (types.includes('locality')) {
+      result.city = longName;
+    }
+    if (types.includes('administrative_area_level_1')) {
+      result.state = longName;
+    }
+    if (types.includes('postal_code')) {
+      result.zipCode = longName;
+    }
+    if (types.includes('country')) {
+      const countryNames = {
+        'US': 'United States', 'CA': 'Canada', 'GB': 'United Kingdom',
+        'AU': 'Australia', 'DE': 'Germany', 'FR': 'France', 'IN': 'India'
+      };
+      result.country = countryNames[shortName] || longName;
+    }
+  });
+
+  return result;
 };
 
 const cardElementOptions = {
@@ -138,6 +184,94 @@ const CheckoutForm = ({ total }) => {
   });
 
   const [errors, setErrors] = useState({});
+
+  // Refs for Google Places Autocomplete
+  const shippingAddress1Ref = useRef(null);
+  const billingAddress1Ref = useRef(null);
+  const autocompleteInitialized = useRef({ shipping: false, billing: false });
+  const googleLoaded = useRef(false);
+
+  // Initialize Google Places Autocomplete - runs once on mount
+  useEffect(() => {
+    if (googleLoaded.current) return;
+
+    const initAutocomplete = () => {
+      if (!window.google || !window.google.maps || !window.google.maps.places) {
+        return;
+      }
+      googleLoaded.current = true;
+
+      const autocompleteOptions = {
+        types: ['address'],
+        fields: ['address_components', 'formatted_address']
+      };
+
+      // Setup shipping address autocomplete
+      if (shippingAddress1Ref.current && !autocompleteInitialized.current.shipping) {
+        const shippingAutocomplete = new window.google.maps.places.Autocomplete(
+          shippingAddress1Ref.current,
+          autocompleteOptions
+        );
+
+        shippingAutocomplete.addListener('place_changed', () => {
+          const place = shippingAutocomplete.getPlace();
+          const parsed = parseAddressComponents(place.address_components);
+          setFormData(prev => ({
+            ...prev,
+            shippingAddress: {
+              ...prev.shippingAddress,
+              addressLine1: parsed.addressLine1,
+              addressLine2: parsed.addressLine2,
+              country: parsed.country,
+              state: parsed.state,
+              city: parsed.city,
+              zipCode: parsed.zipCode
+            }
+          }));
+        });
+        autocompleteInitialized.current.shipping = true;
+      }
+
+      // Setup billing address autocomplete
+      if (billingAddress1Ref.current && !autocompleteInitialized.current.billing) {
+        const billingAutocomplete = new window.google.maps.places.Autocomplete(
+          billingAddress1Ref.current,
+          autocompleteOptions
+        );
+
+        billingAutocomplete.addListener('place_changed', () => {
+          const place = billingAutocomplete.getPlace();
+          const parsed = parseAddressComponents(place.address_components);
+          setFormData(prev => ({
+            ...prev,
+            billingAddress: {
+              ...prev.billingAddress,
+              addressLine1: parsed.addressLine1,
+              addressLine2: parsed.addressLine2,
+              country: parsed.country,
+              state: parsed.state,
+              city: parsed.city,
+              zipCode: parsed.zipCode
+            }
+          }));
+        });
+        autocompleteInitialized.current.billing = true;
+      }
+    };
+
+    // Wait for Google Maps to load using callback
+    if (window.googleMapsLoaded || (window.google && window.google.maps && window.google.maps.places)) {
+      initAutocomplete();
+    } else {
+      const checkGoogleMaps = setInterval(() => {
+        if (window.googleMapsLoaded || (window.google && window.google.maps && window.google.maps.places)) {
+          initAutocomplete();
+          clearInterval(checkGoogleMaps);
+        }
+      }, 100);
+      setTimeout(() => clearInterval(checkGoogleMaps), 10000);
+    }
+  }, []); // Empty dependency - only run once on mount
 
   const getStatesForCountry = (country) => COUNTRIES_STATES[country]?.states || [];
 
@@ -290,7 +424,7 @@ const CheckoutForm = ({ total }) => {
     setLoading(false);
   };
 
-  const AddressFields = ({ prefix, fieldKey }) => (
+  const AddressFields = ({ prefix, fieldKey, addressRef }) => (
     <>
       <div className="form-row">
         <div className="form-group">
@@ -314,11 +448,16 @@ const CheckoutForm = ({ total }) => {
       </div>
       <div className="form-group">
         <label>Address Line 1 *</label>
-        <input type="text" name="addressLine1"
+        <input
+          ref={addressRef}
+          type="text"
+          name="addressLine1"
           value={formData[fieldKey].addressLine1}
           onChange={e => handleInputChange(e, fieldKey, true)}
           placeholder="123 Main Street"
-          className={errors[`${prefix}AddressLine1`] ? 'error' : ''} />
+          className={errors[`${prefix}AddressLine1`] ? 'error' : ''}
+          autoComplete="off"
+        />
         {errors[`${prefix}AddressLine1`] && <span className="field-error">{errors[`${prefix}AddressLine1`]}</span>}
       </div>
       <div className="form-group">
@@ -404,7 +543,7 @@ const CheckoutForm = ({ total }) => {
         {/* Shipping */}
         <div className="form-section">
           <div className="form-section-title">Shipping Address</div>
-          <AddressFields prefix="shipping" fieldKey="shippingAddress" />
+          <AddressFields prefix="shipping" fieldKey="shippingAddress" addressRef={shippingAddress1Ref} />
         </div>
 
         {/* Billing */}
@@ -418,7 +557,7 @@ const CheckoutForm = ({ total }) => {
           </div>
           {!formData.sameAsBilling && (
             <div style={{ animation: 'slideDown 0.3s ease-out' }}>
-              <AddressFields prefix="billing" fieldKey="billingAddress" />
+              <AddressFields prefix="billing" fieldKey="billingAddress" addressRef={billingAddress1Ref} />
             </div>
           )}
         </div>
