@@ -1545,6 +1545,25 @@ body {
   color: var(--secondary);
 }
 
+.order-summary-breakdown {
+  margin-top: 16px;
+  padding-top: 12px;
+}
+
+.summary-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.order-summary-breakdown .order-total {
+  margin-top: 8px;
+  border-top: none;
+  padding-top: 12px;
+}
+
 .continue-shopping-btn {
   display: inline-flex;
   align-items: center;
@@ -1809,4 +1828,178 @@ body {
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+/* ============================================================
+   SHIPPING RATES SECTION
+   ============================================================ */
+
+.shipping-rates-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  background: #F8F9FA;
+  border: 1.5px dashed #D0D0E0;
+  border-radius: 10px;
+  text-align: center;
+  color: #636E72;
+  font-size: 0.88rem;
+}
+
+.shipping-rates-icon {
+  font-size: 1.6rem;
+}
+
+.shipping-rates-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  color: #636E72;
+  font-size: 0.9rem;
+}
+
+.shipping-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(108, 92, 231, 0.25);
+  border-top-color: #6C5CE7;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.shipping-rates-error {
+  color: #FF6B6B;
+  font-size: 0.88rem;
+  padding: 12px 16px;
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  border-radius: 8px;
+}
+
+.shipping-rates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shipping-rate-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1.5px solid #E8E8F0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: white;
+  user-select: none;
+}
+
+.shipping-rate-option:hover {
+  border-color: #6C5CE7;
+  background: #F8F4FF;
+}
+
+.shipping-rate-option.selected {
+  border-color: #6C5CE7;
+  background: #F3F0FF;
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
+}
+
+.shipping-rate-option input[type="radio"] {
+  accent-color: #6C5CE7;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.shipping-rate-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shipping-rate-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1B1F3B;
+}
+
+.shipping-rate-days {
+  font-size: 0.78rem;
+  color: #636E72;
+}
+
+.shipping-rate-price {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #6C5CE7;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   PAYMENT SUMMARY BREAKDOWN (shown above card fields)
+   ============================================================ */
+
+.payment-summary {
+  background: #F8F4FF;
+  border: 1.5px solid rgba(108, 92, 231, 0.15);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.payment-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  color: #636E72;
+  padding: 3px 0;
+}
+
+.payment-summary-row.total {
+  border-top: 1.5px solid rgba(108, 92, 231, 0.2);
+  margin-top: 8px;
+  padding-top: 10px;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #1B1F3B;
+}
+
+.payment-summary-row.total span:last-child {
+  color: #6C5CE7;
+}
+
+/* ============================================================
+   FIX: Placeholder text left-aligned on all inputs
+   ============================================================ */
+
+.form-group input,
+.form-group select,
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="tel"] {
+  text-align: left;
+}
+
+.form-group input::placeholder {
+  text-align: left;
+  color: #A0A8B8;
+}
+
+/* Stripe CardElement placeholder fix — force left alignment via wrapper */
+.card-input {
+  text-align: left !important;
+}
+
+/* Ensure Stripe iframe placeholder aligns left */
+.card-input .InputElement {
+  text-align: left !important;
 }

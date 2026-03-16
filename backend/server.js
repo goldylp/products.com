@@ -25,16 +25,14 @@ const productSchema = new mongoose.Schema({
   name:  { type: String, required: true },
   image: { type: String, required: true },
   price: { type: Number, required: true },
-  weight: { type: Number, default: 1 } // weight in pounds
+  weight: { type: Number, default: 1 }
 });
 const Product = mongoose.model('Product', productSchema);
 
-// NEW: User schema — password is stored as a bcrypt hash, never plain text
 const userSchema = new mongoose.Schema({
   name:      { type: String, required: true },
   email:     { type: String, required: true, unique: true, lowercase: true },
-  password:  { type: String, required: true },   // bcrypt hash
-  // Cart stored in DB so it survives browser cache clears
+  password:  { type: String, required: true },
   cart:      [{
     productId: String,
     name:      String,
@@ -47,9 +45,8 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', userSchema);
 
-// UPDATED: Order schema now has an optional userId to link orders to accounts
 const orderSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // null = guest
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   items: [{
     productId: String,
     name:      String,
@@ -87,12 +84,8 @@ const orderSchema = new mongoose.Schema({
 const Order = mongoose.model('Order', orderSchema);
 
 // ─── Auth Middleware ──────────────────────────────────────────────────────────
-// Works like a gatekeeper — attach to any route that requires login.
-// It reads the JWT from the Authorization header, verifies it, and
-// attaches the decoded user ID to req.userId so route handlers can use it.
 const authenticate = (req, res, next) => {
   const authHeader = req.headers.authorization;
-  // Header format: "Bearer <token>"
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'No token provided' });
   }
@@ -100,7 +93,7 @@ const authenticate = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = decoded.userId;
-    next(); // pass control to the actual route handler
+    next();
   } catch (err) {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
@@ -109,18 +102,18 @@ const authenticate = (req, res, next) => {
 // ─── Seed Products ────────────────────────────────────────────────────────────
 const seedProducts = async () => {
   const products = [
-    { name: 'Whey Protein Isolate - 5lbs',    image: 'https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=400', price: 79.99 },
-    { name: 'Pre-Workout Energy - 30 Servings',image: 'https://images.unsplash.com/photo-1546483875-ad9014c88eba?w=400',   price: 49.99 },
+    { name: 'Whey Protein Isolate - 5lbs',     image: 'https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=400', price: 79.99 },
+    { name: 'Pre-Workout Energy - 30 Servings', image: 'https://images.unsplash.com/photo-1546483875-ad9014c88eba?w=400',   price: 49.99 },
     { name: 'Creatine Monohydrate - 60 Caps',  image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400', price: 29.99 },
     { name: 'Multi-Vitamin Complex',            image: 'https://images.unsplash.com/photo-1550572017-edd951b55104?w=400',   price: 34.99 },
-    { name: 'BCAA Recovery - 40 Servings',     image: 'https://images.unsplash.com/photo-1594381898411-846e7d193883?w=400', price: 39.99 },
-    { name: 'Casein Protein - 2lbs',           image: 'https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?w=400', price: 54.99 },
-    { name: 'L-Glutamine - 60 Servings',       image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400', price: 27.99 },
-    { name: 'Fish Oil Omega-3 - 90 Caps',      image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400',   price: 24.99 },
-    { name: 'Beta-Alanine - 60 Caps',          image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400', price: 22.99 },
-    { name: 'Mass Gainer - 6lbs',              image: 'https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?w=400', price: 69.99 },
-    { name: 'ZMA Sleep Support',               image: 'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?w=400', price: 26.99 },
-    { name: 'Vegan Protein - 2lbs',            image: 'https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=400', price: 44.99 }
+    { name: 'BCAA Recovery - 40 Servings',      image: 'https://images.unsplash.com/photo-1594381898411-846e7d193883?w=400', price: 39.99 },
+    { name: 'Casein Protein - 2lbs',            image: 'https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?w=400', price: 54.99 },
+    { name: 'L-Glutamine - 60 Servings',        image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400', price: 27.99 },
+    { name: 'Fish Oil Omega-3 - 90 Caps',       image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400',   price: 24.99 },
+    { name: 'Beta-Alanine - 60 Caps',           image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400', price: 22.99 },
+    { name: 'Mass Gainer - 6lbs',               image: 'https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?w=400', price: 69.99 },
+    { name: 'ZMA Sleep Support',                image: 'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?w=400', price: 26.99 },
+    { name: 'Vegan Protein - 2lbs',             image: 'https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=400', price: 44.99 }
   ];
   await Product.deleteMany({});
   await Product.insertMany(products);
@@ -130,85 +123,46 @@ seedProducts();
 
 // ─── Auth Routes ──────────────────────────────────────────────────────────────
 
-// POST /api/auth/signup
-// Creates a new user. Password is hashed with bcrypt before saving.
-// Returns a JWT so the user is immediately logged in after signup.
 app.post('/api/auth/signup', async (req, res) => {
   try {
     const { name, email, password } = req.body;
-
     if (!name || !email || !password)
       return res.status(400).json({ error: 'Name, email and password are required' });
-
     if (password.length < 6)
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
-
-    // Check email not already registered
     const existing = await User.findOne({ email });
     if (existing)
       return res.status(400).json({ error: 'Email already registered' });
-
-    // bcrypt.hash(password, 10) — 10 is the "salt rounds", higher = slower but safer
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const user = await User.create({ name, email, password: hashedPassword });
-
-    // Sign a JWT containing the user's MongoDB _id
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }  // token expires in 7 days
-    );
-
-    res.status(201).json({
-      token,
-      user: { _id: user._id, name: user.name, email: user.email }
-    });
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.status(201).json({ token, user: { _id: user._id, name: user.name, email: user.email } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/auth/login
-// Verifies email + password, returns a fresh JWT.
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-
     if (!email || !password)
       return res.status(400).json({ error: 'Email and password are required' });
-
     const user = await User.findOne({ email });
     if (!user)
       return res.status(400).json({ error: 'Invalid email or password' });
-
-    // bcrypt.compare checks the plain password against the stored hash
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       return res.status(400).json({ error: 'Invalid email or password' });
-
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    // Also return the user's saved cart so frontend can restore it
-    res.json({
-      token,
-      user: { _id: user._id, name: user.name, email: user.email },
-      cart: user.cart || []
-    });
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { _id: user._id, name: user.name, email: user.email }, cart: user.cart || [] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/auth/me  (protected)
-// Used on app startup to verify a stored token and restore the session.
 app.get('/api/auth/me', authenticate, async (req, res) => {
   try {
-    const user = await User.findById(req.userId).select('-password'); // never send password
+    const user = await User.findById(req.userId).select('-password');
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ user, cart: user.cart || [] });
   } catch (err) {
@@ -218,9 +172,6 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
 
 // ─── Cart Sync Routes ─────────────────────────────────────────────────────────
 
-// POST /api/cart/sync  (protected)
-// Saves the user's current cart to MongoDB.
-// Called automatically every time the cart changes (if user is logged in).
 app.post('/api/cart/sync', authenticate, async (req, res) => {
   try {
     const { cart } = req.body;
@@ -231,8 +182,6 @@ app.post('/api/cart/sync', authenticate, async (req, res) => {
   }
 });
 
-// GET /api/cart  (protected)
-// Fetches the user's saved cart from MongoDB.
 app.get('/api/cart', authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('cart');
@@ -269,9 +218,21 @@ app.post('/api/create-payment-intent', async (req, res) => {
   }
 });
 
-// ─── Shipping Routes ─────────────────────────────────────────────────────────
+// ─── Shipping Routes ──────────────────────────────────────────────────────────
 
-// POST /api/shipping/rates - Get UPS shipping rates
+// POST /api/shipping/rates
+// Uses the UPS legacy XML API — the same one your CodeIgniter project uses.
+// Works for both test and live with the same credentials.
+//
+// Required .env vars:
+//   UPS_ACCESS_KEY     — your UPS Access License Number (UPS_AUTHORIZATION_KEY from CI4)
+//   UPS_USERNAME       — your UPS.com login email
+//   UPS_PASSWORD       — your UPS.com login password
+//   UPS_SHIPPER_NUMBER — your UPS account number
+//
+// Test endpoint:  https://wwwcie.ups.com/ups.app/xml/Rate
+// Live endpoint:  https://onlinetools.ups.com/ups.app/xml/Rate
+// Swap the URL below when going to production — everything else stays the same.
 app.post('/api/shipping/rates', async (req, res) => {
   try {
     const { items, address } = req.body;
@@ -284,182 +245,180 @@ app.post('/api/shipping/rates', async (req, res) => {
       return res.status(400).json({ error: 'Complete shipping address required' });
     }
 
-    // Calculate total weight (default to 1 lb if not specified)
+    // Calculate total weight (default 1 lb per item if not set on product)
     const totalWeight = items.reduce((sum, item) => sum + (item.weight || 1) * item.quantity, 0);
+    const packageWeight = String(Math.max(1, Math.ceil(totalWeight)));
 
-    // Get UPS credentials from environment
-    const UPS_API_KEY = process.env.UPS_API_KEY;
-    const UPS_USERNAME = process.env.UPS_USERNAME;
-    const UPS_PASSWORD = process.env.UPS_PASSWORD;
-    const UPS_SHIPPER_NUMBER = process.env.UPS_SHIPPER_NUMBER;
+    const UPS_ACCESS_KEY     = process.env.UPS_ACCESS_KEY;
+    const UPS_USERNAME       = process.env.UPS_USERNAME;
+    const UPS_PASSWORD       = process.env.UPS_PASSWORD;
+    const UPS_SHIPPER_NUMBER = process.env.UPS_SHIPPER_NUMBER || '';
 
-    // If no UPS credentials, return mock rates for development
-    if (!UPS_API_KEY || !UPS_USERNAME || !UPS_PASSWORD) {
-      console.log('UPS credentials not configured, returning mock rates');
-      const mockRates = [
-        { service: 'UPS Ground', code: 'GROUND', price: 9.99, days: '5-7 business days' },
-        { service: 'UPS 3 Day Select', code: '3DAYSELECT', price: 19.99, days: '3 business days' },
-        { service: 'UPS 2nd Day Air', code: '2NDDAYAIR', price: 29.99, days: '2 business days' },
-        { service: 'UPS Next Day Air', code: 'NEXTDAYAIR', price: 49.99, days: '1 business day' }
-      ];
-      return res.json({ rates: mockRates, weight: totalWeight });
+    // ── No credentials → return mock rates immediately ────────────────────────
+    if (!UPS_ACCESS_KEY || !UPS_USERNAME || !UPS_PASSWORD) {
+      console.log('UPS credentials not configured — returning mock rates');
+      return res.json({ rates: getMockRates(totalWeight), weight: totalWeight, mock: true });
     }
 
-    // Map country names to UPS country codes
+    // ── Map country names → ISO codes ─────────────────────────────────────────
     const countryCodes = {
-      'United States': 'US',
-      'Canada': 'CA',
-      'United Kingdom': 'GB',
-      'Australia': 'AU',
-      'Germany': 'DE',
-      'France': 'FR',
-      'India': 'IN'
+      'United States': 'US', 'Canada': 'CA', 'United Kingdom': 'GB',
+      'Australia': 'AU', 'Germany': 'DE', 'France': 'FR', 'India': 'IN'
     };
-
-    const originCountry = 'US';
     const destCountry = countryCodes[address.country] || address.country;
 
-    // Build UPS Rating API request
-    const upsRequest = {
-      UPSSecurity: {
-        UsernameToken: {
-          Username: UPS_USERNAME,
-          Password: UPS_PASSWORD
-        },
-        ServiceAccessToken: {
-          AccessKey: UPS_API_KEY
-        }
-      },
-      RateRequest: {
-        Request: {
-          RequestOption: 'Shop',
-          TransactionReference: {
-            CustomerContext: 'Shipping Rate Request'
-          }
-        },
-        Shipment: {
-          Shipper: {
-            Name: 'HealthFuel Store',
-            ShipperNumber: UPS_SHIPPER_NUMBER || '',
-            Address: {
-              AddressLine: ['123 Store St'],
-              City: 'Los Angeles',
-              StateProvinceCode: 'CA',
-              PostalCode: '90001',
-              CountryCode: 'US'
-            }
-          },
-          ShipTo: {
-            CompanyName: 'Customer',
-            Address: {
-              AddressLine: [address.addressLine1],
-              City: address.city,
-              StateProvinceCode: address.state,
-              PostalCode: address.zipCode,
-              CountryCode: destCountry
-            }
-          },
-          ShipFrom: {
-            CompanyName: 'HealthFuel Store',
-            Address: {
-              AddressLine: ['123 Store St'],
-              City: 'Los Angeles',
-              StateProvinceCode: 'CA',
-              PostalCode: '90001',
-              CountryCode: 'US'
-            }
-          },
-          Package: [
-            {
-              PackagingType: {
-                Code: '02',
-                Description: 'Package'
-              },
-              PackageWeight: {
-                UnitOfMeasurement: {
-                  Code: 'LBS'
-                },
-                Weight: String(Math.ceil(totalWeight))
-              }
-            }
-          ]
-        }
-      }
-    };
+    // ── Build the UPS XML request ─────────────────────────────────────────────
+    // Two XML documents sent in one POST body, separated by a newline.
+    // First doc = security/auth block. Second doc = the actual rate request.
+    const xmlRequest = `<?xml version="1.0"?>
+<AccessRequest xml:lang="en-US">
+  <AccessLicenseNumber>${UPS_ACCESS_KEY}</AccessLicenseNumber>
+  <UserId>${UPS_USERNAME}</UserId>
+  <Password>${UPS_PASSWORD}</Password>
+</AccessRequest>
+<?xml version="1.0"?>
+<RatingServiceSelectionRequest xml:lang="en-US">
+  <Request>
+    <TransactionReference>
+      <CustomerContext>HealthFuel Rate Request</CustomerContext>
+    </TransactionReference>
+    <RequestAction>Rate</RequestAction>
+    <RequestOption>Shop</RequestOption>
+  </Request>
+  <PickupType>
+    <Code>03</Code>
+  </PickupType>
+  <Shipment>
+    <Shipper>
+      <Name>HealthFuel Store</Name>
+      <ShipperNumber>${UPS_SHIPPER_NUMBER}</ShipperNumber>
+      <Address>
+        <AddressLine1>123 Store St</AddressLine1>
+        <City>Los Angeles</City>
+        <StateProvinceCode>CA</StateProvinceCode>
+        <PostalCode>90001</PostalCode>
+        <CountryCode>US</CountryCode>
+      </Address>
+    </Shipper>
+    <ShipTo>
+      <CompanyName>Customer</CompanyName>
+      <Address>
+        <AddressLine1>${address.addressLine1 || ''}</AddressLine1>
+        <City>${address.city}</City>
+        <StateProvinceCode>${address.state}</StateProvinceCode>
+        <PostalCode>${address.zipCode}</PostalCode>
+        <CountryCode>${destCountry}</CountryCode>
+      </Address>
+    </ShipTo>
+    <ShipFrom>
+      <CompanyName>HealthFuel Store</CompanyName>
+      <Address>
+        <AddressLine1>123 Store St</AddressLine1>
+        <City>Los Angeles</City>
+        <StateProvinceCode>CA</StateProvinceCode>
+        <PostalCode>90001</PostalCode>
+        <CountryCode>US</CountryCode>
+      </Address>
+    </ShipFrom>
+    <Package>
+      <PackagingType>
+        <Code>02</Code>
+      </PackagingType>
+      <PackageWeight>
+        <UnitOfMeasurement>
+          <Code>LBS</Code>
+        </UnitOfMeasurement>
+        <Weight>${packageWeight}</Weight>
+      </PackageWeight>
+    </Package>
+  </Shipment>
+</RatingServiceSelectionRequest>`;
 
-    // Make request to UPS Rating API
-    const response = await fetch('https://onlinetools.ups.com/api/rating/v1/Shop', {
+    // ── POST to UPS XML endpoint ──────────────────────────────────────────────
+    // Test URL  → https://wwwcie.ups.com/ups.app/xml/Rate
+    // Live URL  → https://onlinetools.ups.com/ups.app/xml/Rate
+    const upsUrl = 'https://wwwcie.ups.com/ups.app/xml/Rate';
+
+    const upsResponse = await fetch(upsUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(upsRequest)
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: xmlRequest
     });
 
-    const data = await response.json();
+    const xmlText = await upsResponse.text();
 
-    if (data.Fault) {
-      console.error('UPS API Error:', data.Fault);
-      // Return mock rates on error
-      const fallbackRates = [
-        { service: 'UPS Ground', code: 'GROUND', price: 9.99 + (totalWeight * 0.5), days: '5-7 business days' },
-        { service: 'UPS 2nd Day Air', code: '2NDDAYAIR', price: 29.99 + (totalWeight * 0.5), days: '2 business days' }
-      ];
-      return res.json({ rates: fallbackRates, weight: totalWeight });
+    // ── Parse the XML response ────────────────────────────────────────────────
+    // Simple regex-based extraction — no XML lib needed for this flat structure
+    const responseCode = xmlText.match(/<ResponseStatusCode>(\d+)<\/ResponseStatusCode>/)?.[1];
+
+    if (responseCode !== '1') {
+      const errDesc = xmlText.match(/<ErrorDescription>(.*?)<\/ErrorDescription>/)?.[1] || 'Unknown UPS error';
+      console.error('UPS XML API error:', errDesc);
+      return res.json({ rates: getMockRates(totalWeight), weight: totalWeight, mock: true });
     }
 
-    // Parse UPS response
-    const ratedShipments = data.RatedResponse?.RatedShipment || [];
-    const rates = ratedShipments.map(shipment => {
-      const serviceCode = shipment.Service?.Code;
-      const serviceNames = {
-        '01': 'UPS Next Day Air',
-        '02': 'UPS 2nd Day Air',
-        '03': 'UPS Ground',
-        '12': 'UPS 3 Day Select',
-        '14': 'UPS Next Day Air Early',
-        '59': 'UPS 2nd Day Air A.M.'
-      };
+    const serviceNames = {
+      '01': 'UPS Next Day Air',
+      '02': 'UPS 2nd Day Air',
+      '03': 'UPS Ground',
+      '12': 'UPS 3 Day Select',
+      '13': 'UPS Next Day Air Saver',
+      '14': 'UPS Next Day Air Early',
+      '59': 'UPS 2nd Day Air A.M.',
+      '65': 'UPS Worldwide Saver',
+      '07': 'UPS Worldwide Express',
+      '08': 'UPS Worldwide Expedited',
+      '11': 'UPS Standard'
+    };
 
-      const transitTime = shipment.GuaranteedDelivery?.BusinessDaysInTransit
-        ? `${shipment.GuaranteedDelivery.BusinessDaysInTransit} business days`
-        : 'Varies';
+    // Each rated service is wrapped in a <RatedShipment> block
+    const shipmentBlocks = xmlText.match(/<RatedShipment>[\s\S]*?<\/RatedShipment>/g) || [];
+
+    if (shipmentBlocks.length === 0) {
+      console.warn('UPS returned 0 rated shipments — falling back to mock rates');
+      return res.json({ rates: getMockRates(totalWeight), weight: totalWeight, mock: true });
+    }
+
+    const rates = shipmentBlocks.map(block => {
+      const code  = block.match(/<Service>[\s\S]*?<Code>(.*?)<\/Code>/)?.[1];
+      const price = parseFloat(block.match(/<TotalCharges>[\s\S]*?<MonetaryValue>(.*?)<\/MonetaryValue>/)?.[1] || '0');
+      const days  = block.match(/<BusinessTransitDays>(\d+)<\/BusinessTransitDays>/)?.[1];
 
       return {
-        service: serviceNames[serviceCode] || `UPS Service ${serviceCode}`,
-        code: serviceCode,
-        price: parseFloat(shipment.TotalCharges?.MonetaryValue || 0),
-        days: transitTime
+        service: serviceNames[code] || `UPS Service ${code}`,
+        code,
+        price,
+        days: days ? `${days} business day${days > 1 ? 's' : ''}` : 'Varies'
       };
-    });
+    }).filter(r => r.price > 0);
 
-    // Sort by price
     rates.sort((a, b) => a.price - b.price);
 
-    res.json({ rates, weight: totalWeight });
+    res.json({ rates, weight: totalWeight, mock: false });
+
   } catch (err) {
-    console.error('Shipping rate error:', err);
-    // Return mock rates on exception
-    const mockRates = [
-      { service: 'UPS Ground', code: 'GROUND', price: 9.99, days: '5-7 business days' },
-      { service: 'UPS 2nd Day Air', code: '2NDDAYAIR', price: 29.99, days: '2 business days' }
-    ];
-    res.json({ rates: mockRates, weight: 1 });
+    console.error('Shipping rate error:', err.message);
+    res.json({ rates: getMockRates(1), weight: 1, mock: true });
   }
 });
 
+// Helper — realistic mock rates used when UPS is unavailable
+const getMockRates = (weight) => [
+  { service: 'UPS Ground',       code: '03',          price: parseFloat((9.99  + weight * 0.4).toFixed(2)), days: '5-7 business days' },
+  { service: 'UPS 3 Day Select', code: '12',          price: parseFloat((19.99 + weight * 0.4).toFixed(2)), days: '3 business days'   },
+  { service: 'UPS 2nd Day Air',  code: '02',          price: parseFloat((29.99 + weight * 0.4).toFixed(2)), days: '2 business days'   },
+  { service: 'UPS Next Day Air', code: '01',          price: parseFloat((49.99 + weight * 0.4).toFixed(2)), days: '1 business day'    }
+];
+
 // ─── Order Routes ─────────────────────────────────────────────────────────────
 
-// POST /api/orders
-// Now accepts an optional Authorization header.
-// If a valid token is present, the order is linked to that user account.
 app.post('/api/orders', async (req, res) => {
   try {
     const {
       items, total, stripePaymentId,
       customerEmail, customerPhone,
-      shippingAddress, billingAddress, sameAsBilling
+      shippingAddress, billingAddress, sameAsBilling,
+      shippingCost, shippingService
     } = req.body;
 
     const errors = [];
@@ -471,25 +430,24 @@ app.post('/api/orders', async (req, res) => {
       errors.push('Invalid email format');
     if (errors.length) return res.status(400).json({ errors });
 
-    // Try to identify if this is a logged-in user
     let userId = null;
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       try {
         const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
         userId = decoded.userId;
-      } catch (_) {
-        // token invalid — treat as guest, no error thrown
-      }
+      } catch (_) {}
     }
 
     const order = await Order.create({
-      userId,  // null for guests, MongoDB ObjectId for logged-in users
+      userId,
       items, total, stripePaymentId,
       customerEmail, customerPhone,
       shippingAddress,
       billingAddress: sameAsBilling ? shippingAddress : billingAddress,
-      sameAsBilling
+      sameAsBilling,
+      shippingCost: shippingCost || 0,
+      shippingMethod: shippingService || ''
     });
 
     res.status(201).json(order);
@@ -498,7 +456,6 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-// GET /api/orders/:id  — fetch single order (used by OrderConfirmation page)
 app.get('/api/orders/:id', async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -509,8 +466,6 @@ app.get('/api/orders/:id', async (req, res) => {
   }
 });
 
-// GET /api/my-orders  (protected)
-// Returns all orders placed by the logged-in user, newest first.
 app.get('/api/my-orders', authenticate, async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.userId }).sort({ createdAt: -1 });

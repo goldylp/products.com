@@ -75,6 +75,14 @@ const OrderConfirmation = () => {
               </span>
             </div>
           )}
+          {order.shippingMethod && (
+            <div className="detail-row">
+              <span className="detail-label">Shipping</span>
+              <span className="detail-value">
+                {order.shippingMethod} - ${(order.shippingCost || 0).toFixed(2)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Order Items */}
@@ -92,24 +100,27 @@ const OrderConfirmation = () => {
               <p className="order-item-price">${(item.price * item.quantity).toFixed(2)}</p>
             </div>
           ))}
-          <div className="order-total">
-            <span>Total Paid</span>
-            <span>${order.total.toFixed(2)}</span>
+          {/* Order Summary Breakdown */}
+          <div className="order-summary-breakdown">
+            <div className="summary-line">
+              <span>Subtotal</span>
+              <span>${((order.total || 0) - (order.shippingCost || 0)).toFixed(2)}</span>
+            </div>
+            {order.shippingCost > 0 && (
+              <div className="summary-line">
+                <span>Shipping ({order.shippingMethod || 'Standard'})</span>
+                <span>${(order.shippingCost || 0).toFixed(2)}</span>
+              </div>
+            )}
+            <div className="order-total">
+              <span>Total Paid</span>
+              <span>${(order.total || 0).toFixed(2)}</span>
+            </div>
           </div>
         </div>
 
-        {/* Trust row */}
-        <div style={{
-          display: 'flex', justifyContent: 'center', gap: 20, flexWrap: 'wrap',
-          marginBottom: 28, fontSize: '0.8rem', color: '#636E72'
-        }}>
-          <span>🚚 Ships within 2-3 business days</span>
-          <span>🔄 30-Day returns</span>
-          <span>📧 Confirmation email sent</span>
-        </div>
-
         <Link to="/" className="continue-shopping-btn">
-          ← Continue Shopping
+          Continue Shopping
         </Link>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import {
@@ -11,6 +11,7 @@ import {
 } from '@stripe/react-stripe-js';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import './Checkout.css';
 
 const stripePromise = loadStripe('pk_test_51T9n5MHXAZgOY02NKj4S3c7gZ5RB5JpXI8Rnl9ZKc8rJDHzEs6Oc4PfMUYaXggdqxFZ5Xx9HqlANo2Q0WcpMw78N00IgJ9eUI8');
 
@@ -54,57 +55,23 @@ const validatePhone = (phone) => !phone || /^[\d\s\-+()]{7,20}$/.test(phone);
 const validateZipCode = (zip) => zip && /^[\d\s\-]{3,10}$/.test(zip);
 const validateRequired = (value) => value && value.trim().length > 0;
 
-const getCountryCode = (countryName) => {
-  const codes = {
-    'United States': 'US', 'Canada': 'CA', 'United Kingdom': 'GB',
-    'Australia': 'AU', 'Germany': 'DE', 'France': 'FR', 'India': 'IN'
-  };
-  return codes[countryName] || countryName;
-};
-
-// Google Places API - Parse address components
 const parseAddressComponents = (addressComponents) => {
-  const result = {
-    addressLine1: '',
-    addressLine2: '',
-    country: '',
-    state: '',
-    city: '',
-    zipCode: ''
-  };
-
+  const result = { addressLine1: '', addressLine2: '', country: '', state: '', city: '', zipCode: '' };
   addressComponents.forEach(component => {
     const types = component.types;
     const longName = component.long_name;
     const shortName = component.short_name;
-
-    if (types.includes('street_number')) {
-      result.addressLine1 = longName + ' ' + result.addressLine1;
-    }
-    if (types.includes('route')) {
-      result.addressLine1 += longName;
-    }
-    if (types.includes('subpremise')) {
-      result.addressLine2 = longName;
-    }
-    if (types.includes('locality')) {
-      result.city = longName;
-    }
-    if (types.includes('administrative_area_level_1')) {
-      result.state = longName;
-    }
-    if (types.includes('postal_code')) {
-      result.zipCode = longName;
-    }
+    if (types.includes('street_number')) result.addressLine1 = longName + ' ' + result.addressLine1;
+    if (types.includes('route')) result.addressLine1 += longName;
+    if (types.includes('subpremise')) result.addressLine2 = longName;
+    if (types.includes('locality')) result.city = longName;
+    if (types.includes('administrative_area_level_1')) result.state = longName;
+    if (types.includes('postal_code')) result.zipCode = longName;
     if (types.includes('country')) {
-      const countryNames = {
-        'US': 'United States', 'CA': 'Canada', 'GB': 'United Kingdom',
-        'AU': 'Australia', 'DE': 'Germany', 'FR': 'France', 'IN': 'India'
-      };
+      const countryNames = { 'US': 'United States', 'CA': 'Canada', 'GB': 'United Kingdom', 'AU': 'Australia', 'DE': 'Germany', 'FR': 'France', 'IN': 'India' };
       result.country = countryNames[shortName] || longName;
     }
   });
-
   return result;
 };
 
@@ -114,16 +81,16 @@ const cardElementOptions = {
       fontSize: '15px',
       color: '#1B1F3B',
       fontFamily: "'Poppins', sans-serif",
-      '::placeholder': { color: '#A0A8B8' }
+      textAlign: 'left',
+      '::placeholder': { color: '#A0A8B8', textAlign: 'left' }
     },
     invalid: { color: '#FF6B6B' }
   }
 };
 
 // ── Order Summary Panel ────────────────────────────────────────────────────────
-const OrderSummaryPanel = ({ cartItems, cartTotal }) => {
-  const shippingFree = cartTotal >= 50;
-
+const OrderSummaryPanel = ({ cartItems, cartTotal, selectedRate, finalTotal }) => {
+  const shippingCost = selectedRate ? selectedRate.price : 0;
   return (
     <div className="order-summary-panel">
       <h2>Order Summary</h2>
@@ -146,21 +113,194 @@ const OrderSummaryPanel = ({ cartItems, cartTotal }) => {
         </div>
         <div className="summary-row">
           <span>Shipping</span>
-          <span className={shippingFree ? 'free' : ''}>
-            {shippingFree ? 'FREE 🎉' : '$5.99'}
+          <span className={selectedRate ? '' : 'free'}>
+            {selectedRate ? `$${shippingCost.toFixed(2)}` : 'Select at checkout'}
           </span>
         </div>
         <div className="summary-total">
           <span>Total</span>
-          <span className="price">${cartTotal.toFixed(2)}</span>
+          <span className="price">${finalTotal.toFixed(2)}</span>
         </div>
       </div>
     </div>
   );
 };
 
-// ── Checkout Form ─
-const CheckoutForm = ({ total }) => {
+// ── Address Fields — defined OUTSIDE CheckoutForm to prevent remount on every render ──
+// This is the critical fix for the "can only type 1 character" bug.
+// When a component is defined inside another component's render body, React treats it
+// as a brand-new component type every render and fully unmounts+remounts it, losing focus.
+const AddressFields = ({ prefix, fieldKey, formData, errors, onInputChange, addressRef, getStatesForCountry }) => (
+  <>
+    <div className="form-row">
+      <div className="form-group">
+        <label>First Name *</label>
+        <input
+          type="text"
+          name="firstName"
+          value={formData[fieldKey].firstName}
+          onChange={e => onInputChange(e, fieldKey, true)}
+          placeholder="John"
+          className={errors[`${prefix}FirstName`] ? 'error' : ''}
+        />
+        {errors[`${prefix}FirstName`] && <span className="field-error">{errors[`${prefix}FirstName`]}</span>}
+      </div>
+      <div className="form-group">
+        <label>Last Name *</label>
+        <input
+          type="text"
+          name="lastName"
+          value={formData[fieldKey].lastName}
+          onChange={e => onInputChange(e, fieldKey, true)}
+          placeholder="Doe"
+          className={errors[`${prefix}LastName`] ? 'error' : ''}
+        />
+        {errors[`${prefix}LastName`] && <span className="field-error">{errors[`${prefix}LastName`]}</span>}
+      </div>
+    </div>
+    <div className="form-group">
+      <label>Address Line 1 *</label>
+      <input
+        ref={addressRef}
+        type="text"
+        name="addressLine1"
+        value={formData[fieldKey].addressLine1}
+        onChange={e => onInputChange(e, fieldKey, true)}
+        placeholder="123 Main Street"
+        className={errors[`${prefix}AddressLine1`] ? 'error' : ''}
+        autoComplete="off"
+      />
+      {errors[`${prefix}AddressLine1`] && <span className="field-error">{errors[`${prefix}AddressLine1`]}</span>}
+    </div>
+    <div className="form-group">
+      <label>Address Line 2 <span style={{ color: '#A0A8B8' }}>(optional)</span></label>
+      <input
+        type="text"
+        name="addressLine2"
+        value={formData[fieldKey].addressLine2}
+        onChange={e => onInputChange(e, fieldKey, true)}
+        placeholder="Apt, suite, unit, etc."
+      />
+    </div>
+    <div className="form-group">
+      <label>Country *</label>
+      <select
+        name="country"
+        value={formData[fieldKey].country}
+        onChange={e => onInputChange(e, fieldKey, true)}
+        className={errors[`${prefix}Country`] ? 'error' : ''}
+      >
+        <option value="">Select Country</option>
+        {Object.keys(COUNTRIES_STATES).map(c => <option key={c} value={c}>{c}</option>)}
+      </select>
+      {errors[`${prefix}Country`] && <span className="field-error">{errors[`${prefix}Country`]}</span>}
+    </div>
+    <div className="form-row">
+      <div className="form-group">
+        <label>State / Province *</label>
+        <select
+          name="state"
+          value={formData[fieldKey].state}
+          onChange={e => onInputChange(e, fieldKey, true)}
+          disabled={!formData[fieldKey].country}
+          className={errors[`${prefix}State`] ? 'error' : ''}
+        >
+          <option value="">Select State</option>
+          {getStatesForCountry(formData[fieldKey].country).map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        {errors[`${prefix}State`] && <span className="field-error">{errors[`${prefix}State`]}</span>}
+      </div>
+      <div className="form-group">
+        <label>City *</label>
+        <input
+          type="text"
+          name="city"
+          value={formData[fieldKey].city}
+          onChange={e => onInputChange(e, fieldKey, true)}
+          placeholder="New York"
+          className={errors[`${prefix}City`] ? 'error' : ''}
+        />
+        {errors[`${prefix}City`] && <span className="field-error">{errors[`${prefix}City`]}</span>}
+      </div>
+    </div>
+    <div className="form-group">
+      <label>ZIP / Postal Code *</label>
+      <input
+        type="text"
+        name="zipCode"
+        value={formData[fieldKey].zipCode}
+        onChange={e => onInputChange(e, fieldKey, true)}
+        placeholder="10001"
+        className={errors[`${prefix}ZipCode`] ? 'error' : ''}
+      />
+      {errors[`${prefix}ZipCode`] && <span className="field-error">{errors[`${prefix}ZipCode`]}</span>}
+    </div>
+  </>
+);
+
+// ── Shipping Rates Section ─────────────────────────────────────────────────────
+const ShippingRatesSection = ({ rates, selectedRate, onSelectRate, loading, error, hasAddress }) => {
+  if (!hasAddress) {
+    return (
+      <div className="shipping-rates-section">
+        <div className="shipping-rates-placeholder">
+          <span className="shipping-rates-icon">📦</span>
+          <p>Enter your shipping address above to see available shipping rates</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="shipping-rates-section">
+        <div className="shipping-rates-loading">
+          <span className="shipping-spinner" />
+          <p>Fetching shipping rates...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="shipping-rates-section">
+        <div className="shipping-rates-error">⚠️ {error}</div>
+      </div>
+    );
+  }
+
+  if (!rates || rates.length === 0) return null;
+
+  return (
+    <div className="shipping-rates-section">
+      <div className="shipping-rates-list">
+        {rates.map(rate => (
+          <label
+            key={rate.code}
+            className={`shipping-rate-option ${selectedRate?.code === rate.code ? 'selected' : ''}`}
+          >
+            <input
+              type="radio"
+              name="shippingRate"
+              value={rate.code}
+              checked={selectedRate?.code === rate.code}
+              onChange={() => onSelectRate(rate)}
+            />
+            <div className="shipping-rate-info">
+              <span className="shipping-rate-name">{rate.service}</span>
+              <span className="shipping-rate-days">{rate.days}</span>
+            </div>
+            <span className="shipping-rate-price">${rate.price.toFixed(2)}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ── Checkout Form ──────────────────────────────────────────────────────────────
+const CheckoutForm = ({ total, selectedShipping, setSelectedShipping }) => {
   const stripe = useStripe();
   const elements = useElements();
   const navigate = useNavigate();
@@ -185,6 +325,14 @@ const CheckoutForm = ({ total }) => {
 
   const [errors, setErrors] = useState({});
 
+  // Shipping rates state - use props from parent
+  const [shippingRates, setShippingRates] = useState([]);
+  const selectedRate = selectedShipping;
+  const setSelectedRate = setSelectedShipping;
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const [ratesError, setRatesError] = useState(null);
+  const fetchRatesTimer = useRef(null);
+
   // Refs for Google Places Autocomplete
   const shippingAddress1Ref = useRef(null);
   const billingAddress1Ref = useRef(null);
@@ -196,70 +344,38 @@ const CheckoutForm = ({ total }) => {
     if (googleLoaded.current) return;
 
     const initAutocomplete = () => {
-      if (!window.google || !window.google.maps || !window.google.maps.places) {
-        return;
-      }
+      if (!window.google || !window.google.maps || !window.google.maps.places) return;
       googleLoaded.current = true;
 
-      const autocompleteOptions = {
-        types: ['address'],
-        fields: ['address_components', 'formatted_address']
-      };
+      const autocompleteOptions = { types: ['address'], fields: ['address_components', 'formatted_address'] };
 
-      // Setup shipping address autocomplete
       if (shippingAddress1Ref.current && !autocompleteInitialized.current.shipping) {
-        const shippingAutocomplete = new window.google.maps.places.Autocomplete(
-          shippingAddress1Ref.current,
-          autocompleteOptions
-        );
-
+        const shippingAutocomplete = new window.google.maps.places.Autocomplete(shippingAddress1Ref.current, autocompleteOptions);
         shippingAutocomplete.addListener('place_changed', () => {
           const place = shippingAutocomplete.getPlace();
           const parsed = parseAddressComponents(place.address_components);
           setFormData(prev => ({
             ...prev,
-            shippingAddress: {
-              ...prev.shippingAddress,
-              addressLine1: parsed.addressLine1,
-              addressLine2: parsed.addressLine2,
-              country: parsed.country,
-              state: parsed.state,
-              city: parsed.city,
-              zipCode: parsed.zipCode
-            }
+            shippingAddress: { ...prev.shippingAddress, ...parsed }
           }));
         });
         autocompleteInitialized.current.shipping = true;
       }
 
-      // Setup billing address autocomplete
       if (billingAddress1Ref.current && !autocompleteInitialized.current.billing) {
-        const billingAutocomplete = new window.google.maps.places.Autocomplete(
-          billingAddress1Ref.current,
-          autocompleteOptions
-        );
-
+        const billingAutocomplete = new window.google.maps.places.Autocomplete(billingAddress1Ref.current, autocompleteOptions);
         billingAutocomplete.addListener('place_changed', () => {
           const place = billingAutocomplete.getPlace();
           const parsed = parseAddressComponents(place.address_components);
           setFormData(prev => ({
             ...prev,
-            billingAddress: {
-              ...prev.billingAddress,
-              addressLine1: parsed.addressLine1,
-              addressLine2: parsed.addressLine2,
-              country: parsed.country,
-              state: parsed.state,
-              city: parsed.city,
-              zipCode: parsed.zipCode
-            }
+            billingAddress: { ...prev.billingAddress, ...parsed }
           }));
         });
         autocompleteInitialized.current.billing = true;
       }
     };
 
-    // Wait for Google Maps to load using callback
     if (window.googleMapsLoaded || (window.google && window.google.maps && window.google.maps.places)) {
       initAutocomplete();
     } else {
@@ -271,11 +387,70 @@ const CheckoutForm = ({ total }) => {
       }, 100);
       setTimeout(() => clearInterval(checkGoogleMaps), 10000);
     }
-  }, []); // Empty dependency - only run once on mount
+  }, []);
 
-  const getStatesForCountry = (country) => COUNTRIES_STATES[country]?.states || [];
+  // Fetch UPS shipping rates whenever shipping address is complete
+  useEffect(() => {
+    const addr = formData.shippingAddress;
+    const isComplete = addr.country && addr.state && addr.city && addr.zipCode;
+    if (!isComplete) {
+      setShippingRates([]);
+      setSelectedRate(null);
+      return;
+    }
 
-  const handleInputChange = (e, field, isNested = false) => {
+    // Debounce to avoid too many API calls while typing
+    if (fetchRatesTimer.current) clearTimeout(fetchRatesTimer.current);
+    fetchRatesTimer.current = setTimeout(async () => {
+      setRatesLoading(true);
+      setRatesError(null);
+      try {
+        const res = await fetch('http://localhost:5000/api/shipping/rates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: cartItems.map(item => ({
+              productId: item._id,
+              name: item.name,
+              quantity: item.quantity,
+              weight: item.weight || 1
+            })),
+            address: {
+              addressLine1: addr.addressLine1,
+              city: addr.city,
+              state: addr.state,
+              zipCode: addr.zipCode,
+              country: addr.country
+            }
+          })
+        });
+        const data = await res.json();
+        if (data.rates && data.rates.length > 0) {
+          setShippingRates(data.rates);
+          setSelectedRate(data.rates[0]); // auto-select cheapest
+        } else {
+          setRatesError('No rates available for this address.');
+        }
+      } catch (err) {
+        setRatesError('Could not fetch shipping rates. Please try again.');
+      } finally {
+        setRatesLoading(false);
+      }
+    }, 600);
+
+    return () => { if (fetchRatesTimer.current) clearTimeout(fetchRatesTimer.current); };
+  }, [
+    formData.shippingAddress.country,
+    formData.shippingAddress.state,
+    formData.shippingAddress.city,
+    formData.shippingAddress.zipCode,
+    cartItems
+  ]);
+
+  const getStatesForCountry = useCallback((country) => COUNTRIES_STATES[country]?.states || [], []);
+
+  // useCallback so the reference is stable — prevents AddressFields from seeing a new prop on every render
+  const handleInputChange = useCallback((e, field, isNested = false) => {
     const { name, value } = e.target;
     if (isNested) {
       setFormData(prev => ({
@@ -289,7 +464,7 @@ const CheckoutForm = ({ total }) => {
       ? `${field === 'shippingAddress' ? 'shipping' : 'billing'}${name.charAt(0).toUpperCase() + name.slice(1)}`
       : name;
     if (errors[errorKey]) setErrors(prev => ({ ...prev, [errorKey]: '' }));
-  };
+  }, [errors]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -302,7 +477,6 @@ const CheckoutForm = ({ total }) => {
     if (!formData.shippingAddress.state) newErrors.shippingState = 'Required';
     if (!validateRequired(formData.shippingAddress.city)) newErrors.shippingCity = 'Required';
     if (!validateZipCode(formData.shippingAddress.zipCode)) newErrors.shippingZipCode = 'Valid ZIP required';
-
     if (!formData.sameAsBilling) {
       if (!validateRequired(formData.billingAddress.firstName)) newErrors.billingFirstName = 'Required';
       if (!validateRequired(formData.billingAddress.lastName)) newErrors.billingLastName = 'Required';
@@ -312,6 +486,7 @@ const CheckoutForm = ({ total }) => {
       if (!validateRequired(formData.billingAddress.city)) newErrors.billingCity = 'Required';
       if (!validateZipCode(formData.billingAddress.zipCode)) newErrors.billingZipCode = 'Valid ZIP required';
     }
+    if (!selectedRate && shippingRates.length > 0) newErrors.shippingRate = 'Please select a shipping method';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -319,53 +494,38 @@ const CheckoutForm = ({ total }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!stripe || !elements) return;
-    if (!validateForm()) { setError('Please fix the errors above before continuing.'); return; }
-
+    if (!validateForm()) {
+      setError('Please fix the errors above before continuing.');
+      return;
+    }
     setLoading(true);
     setError(null);
 
     try {
-      const intentResponse = await fetch('http://localhost:5000/api/create-payment-intent', {
+      const shippingAmount = selectedRate ? selectedRate.price : 0;
+      const finalTotal = total + shippingAmount;
+
+      const intentRes = await fetch('http://localhost:5000/api/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: total })
+        body: JSON.stringify({ amount: finalTotal })
       });
+      const { clientSecret } = await intentRes.json();
 
-      if (!intentResponse.ok) {
-        const errData = await intentResponse.json();
-        throw new Error(errData.error || 'Failed to create payment');
-      }
-
-      const { clientSecret } = await intentResponse.json();
-      const cardNumberElement = elements.getElement(CardNumberElement);
-
-      const { paymentMethod, error: stripeError } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: cardNumberElement,
-        billing_details: {
-          name: `${formData.shippingAddress.firstName} ${formData.shippingAddress.lastName}`,
-          email: formData.customerEmail || undefined,
-          phone: formData.customerPhone || undefined,
-          address: {
-            line1: formData.shippingAddress.addressLine1,
-            line2: formData.shippingAddress.addressLine2 || undefined,
-            city: formData.shippingAddress.city,
-            state: formData.shippingAddress.state,
-            postal_code: formData.shippingAddress.zipCode,
-            country: getCountryCode(formData.shippingAddress.country)
+      const cardElement = elements.getElement(CardNumberElement);
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            email: formData.customerEmail,
+            name: `${formData.shippingAddress.firstName} ${formData.shippingAddress.lastName}`
           }
         }
       });
 
-      if (stripeError) { setError(stripeError.message); setLoading(false); return; }
-
-      const { paymentIntent, error: confirmError } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: paymentMethod.id
-      });
-
-      if (confirmError) { setError(confirmError.message); setLoading(false); return; }
-
-      if (paymentIntent.status === 'succeeded') {
+      if (stripeError) {
+        setError(stripeError.message);
+      } else if (paymentIntent.status === 'succeeded') {
         const billingAddress = formData.sameAsBilling
           ? {
               fullName: `${formData.shippingAddress.firstName} ${formData.shippingAddress.lastName}`,
@@ -395,7 +555,9 @@ const CheckoutForm = ({ total }) => {
               quantity: item.quantity,
               image: item.image
             })),
-            total,
+            total: finalTotal,
+            shippingCost: shippingAmount,
+            shippingService: selectedRate?.service || 'Standard',
             stripePaymentId: paymentIntent.id,
             customerEmail: formData.customerEmail,
             customerPhone: formData.customerPhone,
@@ -424,94 +586,15 @@ const CheckoutForm = ({ total }) => {
     setLoading(false);
   };
 
-  const AddressFields = ({ prefix, fieldKey, addressRef }) => (
-    <>
-      <div className="form-row">
-        <div className="form-group">
-          <label>First Name *</label>
-          <input type="text" name="firstName"
-            value={formData[fieldKey].firstName}
-            onChange={e => handleInputChange(e, fieldKey, true)}
-            placeholder="John"
-            className={errors[`${prefix}FirstName`] ? 'error' : ''} />
-          {errors[`${prefix}FirstName`] && <span className="field-error">{errors[`${prefix}FirstName`]}</span>}
-        </div>
-        <div className="form-group">
-          <label>Last Name *</label>
-          <input type="text" name="lastName"
-            value={formData[fieldKey].lastName}
-            onChange={e => handleInputChange(e, fieldKey, true)}
-            placeholder="Doe"
-            className={errors[`${prefix}LastName`] ? 'error' : ''} />
-          {errors[`${prefix}LastName`] && <span className="field-error">{errors[`${prefix}LastName`]}</span>}
-        </div>
-      </div>
-      <div className="form-group">
-        <label>Address Line 1 *</label>
-        <input
-          ref={addressRef}
-          type="text"
-          name="addressLine1"
-          value={formData[fieldKey].addressLine1}
-          onChange={e => handleInputChange(e, fieldKey, true)}
-          placeholder="123 Main Street"
-          className={errors[`${prefix}AddressLine1`] ? 'error' : ''}
-          autoComplete="off"
-        />
-        {errors[`${prefix}AddressLine1`] && <span className="field-error">{errors[`${prefix}AddressLine1`]}</span>}
-      </div>
-      <div className="form-group">
-        <label>Address Line 2 <span style={{ color: '#A0A8B8' }}>(optional)</span></label>
-        <input type="text" name="addressLine2"
-          value={formData[fieldKey].addressLine2}
-          onChange={e => handleInputChange(e, fieldKey, true)}
-          placeholder="Apt, suite, unit, etc." />
-      </div>
-      <div className="form-group">
-        <label>Country *</label>
-        <select name="country"
-          value={formData[fieldKey].country}
-          onChange={e => handleInputChange(e, fieldKey, true)}
-          className={errors[`${prefix}Country`] ? 'error' : ''}>
-          <option value="">Select Country</option>
-          {Object.keys(COUNTRIES_STATES).map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        {errors[`${prefix}Country`] && <span className="field-error">{errors[`${prefix}Country`]}</span>}
-      </div>
-      <div className="form-row">
-        <div className="form-group">
-          <label>State / Province *</label>
-          <select name="state"
-            value={formData[fieldKey].state}
-            onChange={e => handleInputChange(e, fieldKey, true)}
-            disabled={!formData[fieldKey].country}
-            className={errors[`${prefix}State`] ? 'error' : ''}>
-            <option value="">Select State</option>
-            {getStatesForCountry(formData[fieldKey].country).map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          {errors[`${prefix}State`] && <span className="field-error">{errors[`${prefix}State`]}</span>}
-        </div>
-        <div className="form-group">
-          <label>City *</label>
-          <input type="text" name="city"
-            value={formData[fieldKey].city}
-            onChange={e => handleInputChange(e, fieldKey, true)}
-            placeholder="New York"
-            className={errors[`${prefix}City`] ? 'error' : ''} />
-          {errors[`${prefix}City`] && <span className="field-error">{errors[`${prefix}City`]}</span>}
-        </div>
-      </div>
-      <div className="form-group">
-        <label>ZIP / Postal Code *</label>
-        <input type="text" name="zipCode"
-          value={formData[fieldKey].zipCode}
-          onChange={e => handleInputChange(e, fieldKey, true)}
-          placeholder="10001"
-          className={errors[`${prefix}ZipCode`] ? 'error' : ''} />
-        {errors[`${prefix}ZipCode`] && <span className="field-error">{errors[`${prefix}ZipCode`]}</span>}
-      </div>
-    </>
+  const shippingAddressComplete = !!(
+    formData.shippingAddress.country &&
+    formData.shippingAddress.state &&
+    formData.shippingAddress.city &&
+    formData.shippingAddress.zipCode
   );
+
+  const shippingCost = selectedRate ? selectedRate.price : 0;
+  const finalTotal = total + shippingCost;
 
   return (
     <form onSubmit={handleSubmit}>
@@ -522,49 +605,139 @@ const CheckoutForm = ({ total }) => {
           <div className="form-section-title">Contact Information</div>
           <div className="form-group">
             <label>Email Address *</label>
-            <input type="email" name="customerEmail"
+            <input
+              type="email"
+              name="customerEmail"
               value={formData.customerEmail}
               onChange={handleInputChange}
               placeholder="your@email.com"
-              className={errors.customerEmail ? 'error' : ''} />
+              className={errors.customerEmail ? 'error' : ''}
+            />
             {errors.customerEmail && <span className="field-error">{errors.customerEmail}</span>}
           </div>
           <div className="form-group">
             <label>Phone Number <span style={{ color: '#A0A8B8' }}>(optional)</span></label>
-            <input type="tel" name="customerPhone"
+            <input
+              type="tel"
+              name="customerPhone"
               value={formData.customerPhone}
               onChange={handleInputChange}
               placeholder="+1 (555) 123-4567"
-              className={errors.customerPhone ? 'error' : ''} />
+              className={errors.customerPhone ? 'error' : ''}
+            />
             {errors.customerPhone && <span className="field-error">{errors.customerPhone}</span>}
           </div>
         </div>
 
-        {/* Shipping */}
+        {/* Shipping Address */}
         <div className="form-section">
           <div className="form-section-title">Shipping Address</div>
-          <AddressFields prefix="shipping" fieldKey="shippingAddress" addressRef={shippingAddress1Ref} />
+          <AddressFields
+            prefix="shipping"
+            fieldKey="shippingAddress"
+            formData={formData}
+            errors={errors}
+            onInputChange={handleInputChange}
+            addressRef={shippingAddress1Ref}
+            getStatesForCountry={getStatesForCountry}
+          />
         </div>
 
-        {/* Billing */}
+        {/* Billing Address */}
         <div className="form-section">
           <div className="form-section-title">Billing Address</div>
           <div className="checkbox-group">
-            <input type="checkbox" id="sameAsBilling"
+            <input
+              type="checkbox"
+              id="sameAsBilling"
               checked={formData.sameAsBilling}
-              onChange={e => setFormData(prev => ({ ...prev, sameAsBilling: e.target.checked }))} />
+              onChange={e => setFormData(prev => ({ ...prev, sameAsBilling: e.target.checked }))}
+            />
             <label htmlFor="sameAsBilling">Same as shipping address</label>
           </div>
           {!formData.sameAsBilling && (
             <div style={{ animation: 'slideDown 0.3s ease-out' }}>
-              <AddressFields prefix="billing" fieldKey="billingAddress" addressRef={billingAddress1Ref} />
+              <AddressFields
+                prefix="billing"
+                fieldKey="billingAddress"
+                formData={formData}
+                errors={errors}
+                onInputChange={handleInputChange}
+                addressRef={billingAddress1Ref}
+                getStatesForCountry={getStatesForCountry}
+              />
             </div>
           )}
         </div>
 
-        {/* Payment */}
+        {/* Shipping Rates — displayed above Payment Details */}
+        <div className="form-section">
+          <div className="form-section-title">Shipping Method</div>
+          {!shippingAddressComplete && (
+            <div className="shipping-rates-placeholder">
+              <span className="shipping-rates-icon">📦</span>
+              <p>Complete your shipping address above to see available rates</p>
+            </div>
+          )}
+          {shippingAddressComplete && ratesLoading && (
+            <div className="shipping-rates-loading">
+              <span className="shipping-spinner" />
+              <p>Fetching shipping rates...</p>
+            </div>
+          )}
+          {shippingAddressComplete && !ratesLoading && ratesError && (
+            <div className="shipping-rates-error">⚠️ {ratesError}</div>
+          )}
+          {shippingAddressComplete && !ratesLoading && !ratesError && shippingRates.length > 0 && (
+            <>
+              <div className="shipping-rates-list">
+                {shippingRates.map(rate => (
+                  <label
+                    key={rate.code}
+                    className={`shipping-rate-option ${selectedRate?.code === rate.code ? 'selected' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="shippingRate"
+                      value={rate.code}
+                      checked={selectedRate?.code === rate.code}
+                      onChange={() => setSelectedRate(rate)}
+                    />
+                    <div className="shipping-rate-info">
+                      <span className="shipping-rate-name">{rate.service}</span>
+                      <span className="shipping-rate-days">{rate.days}</span>
+                    </div>
+                    <span className="shipping-rate-price">${rate.price.toFixed(2)}</span>
+                  </label>
+                ))}
+              </div>
+              {errors.shippingRate && <span className="field-error" style={{ marginTop: 8 }}>{errors.shippingRate}</span>}
+            </>
+          )}
+        </div>
+
+        {/* Payment Details */}
         <div className="form-section">
           <div className="form-section-title">Payment Details</div>
+
+          {/* Order total with shipping breakdown */}
+          {selectedRate && (
+            <div className="payment-summary">
+              <div className="payment-summary-row">
+                <span>Subtotal</span>
+                <span>${total.toFixed(2)}</span>
+              </div>
+              <div className="payment-summary-row">
+                <span>Shipping ({selectedRate.service})</span>
+                <span>${shippingCost.toFixed(2)}</span>
+              </div>
+              <div className="payment-summary-row total">
+                <span>Total</span>
+                <span>${finalTotal.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+
           <div className="card-fields">
             <div className="form-group">
               <label>Card Number</label>
@@ -592,7 +765,7 @@ const CheckoutForm = ({ total }) => {
               Processing...
             </>
           ) : (
-            <> Pay Now ${total.toFixed(2)}</>
+            <> Pay Now ${finalTotal.toFixed(2)}</>
           )}
         </button>
       </div>
@@ -604,20 +777,33 @@ const CheckoutForm = ({ total }) => {
 const Checkout = () => {
   const { cartItems, cartTotal } = useCart();
   const navigate = useNavigate();
+  const [selectedShipping, setSelectedShipping] = useState(null);
 
   if (cartItems.length === 0) {
     navigate('/');
     return null;
   }
 
+  const shippingCost = selectedShipping ? selectedShipping.price : 0;
+  const finalTotal = cartTotal + shippingCost;
+
   return (
     <div className="checkout-page">
       <div className="checkout-container">
         <div className="checkout-content">
           <Elements stripe={stripePromise}>
-            <CheckoutForm total={cartTotal} />
+            <CheckoutForm
+              total={cartTotal}
+              selectedShipping={selectedShipping}
+              setSelectedShipping={setSelectedShipping}
+            />
           </Elements>
-          <OrderSummaryPanel cartItems={cartItems} cartTotal={cartTotal} />
+          <OrderSummaryPanel
+            cartItems={cartItems}
+            cartTotal={cartTotal}
+            selectedRate={selectedShipping}
+            finalTotal={finalTotal}
+          />
         </div>
       </div>
     </div>

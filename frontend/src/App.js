@@ -53,7 +53,7 @@ const Footer = () => (
       </div>
     </div>
     <div className="footer-bottom">
-      <p>© {new Date().getFullYear()} HealthFuel Store. All rights reserved.</p>
+      <p>Copyright © {new Date().getFullYear()} HealthFuel Store. All rights reserved.</p>
     </div>
   </footer>
 );
