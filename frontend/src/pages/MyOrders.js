@@ -1,32 +1,74 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+
+const ORDERS_PER_PAGE = 10;
 
 const MyOrders = () => {
   const { user, getAuthHeader } = useAuth();
   const navigate = useNavigate();
 
-  const [orders, setOrders]   = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: ORDERS_PER_PAGE,
+    totalOrders: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState('');
+  const [error, setError] = useState('');
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!user) {
       navigate('/login');
       return;
     }
-    fetch('http://localhost:5000/api/my-orders', {
+
+    setLoading(true);
+    setError('');
+
+    fetch(`http://localhost:5000/api/my-orders?page=${currentPage}&limit=${ORDERS_PER_PAGE}`, {
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
     })
       .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch orders'))
-      .then(data => setOrders(data))
+      .then(data => {
+        if (Array.isArray(data)) {
+          setOrders(data);
+          setPagination({
+            page: 1,
+            limit: data.length || ORDERS_PER_PAGE,
+            totalOrders: data.length,
+            totalPages: data.length > 0 ? 1 : 1,
+            hasNextPage: false,
+            hasPrevPage: false
+          });
+          return;
+        }
+
+        setOrders(data.orders || []);
+        setPagination(data.pagination || {
+          page: currentPage,
+          limit: ORDERS_PER_PAGE,
+          totalOrders: 0,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false
+        });
+      })
       .catch(err => setError(typeof err === 'string' ? err : 'Failed to load orders'))
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [currentPage, getAuthHeader, navigate, user]);
+
+  const handlePageChange = (page) => {
+    if (page < 1 || page > pagination.totalPages || page === currentPage) return;
+    setCurrentPage(page);
+  };
 
   if (loading) return <div className="loading">Loading your orders...</div>;
-  if (error)   return <div className="error">{error}</div>;
+  if (error) return <div className="error">{error}</div>;
 
   return (
     <div className="my-orders-page">
@@ -34,13 +76,13 @@ const MyOrders = () => {
         <div className="my-orders-header">
           <h1>My Orders</h1>
           <p className="orders-subtitle">
-            Logged in as <strong>{user?.email}</strong> — {orders.length} order{orders.length !== 1 ? 's' : ''} found
+            Logged in as <strong>{user?.email}</strong> - {pagination.totalOrders} order{pagination.totalOrders !== 1 ? 's' : ''} found
           </p>
         </div>
 
-        {orders.length === 0 ? (
+        {pagination.totalOrders === 0 ? (
           <div className="no-orders">
-            <div className="no-orders-icon">📦</div>
+            <div className="no-orders-icon">&#128230;</div>
             <h2>No orders yet</h2>
             <p>You haven't placed any orders. Start shopping!</p>
             <Link to="/" className="start-shopping-btn">Browse Products</Link>
@@ -71,9 +113,9 @@ const MyOrders = () => {
                     </td>
                     <td>
                       <div className="order-items-preview">
-                        {order.items.slice(0, 2).map((item, i) => (
-                          <span key={i} className="item-tag">
-                            {item.name} ×{item.quantity}
+                        {order.items.slice(0, 2).map((item, index) => (
+                          <span key={index} className="item-tag">
+                            {item.name} x{item.quantity}
                           </span>
                         ))}
                         {order.items.length > 2 && (
@@ -87,7 +129,7 @@ const MyOrders = () => {
                     <td className="shipping-cell">
                       {order.shippingAddress
                         ? `${order.shippingAddress.city}, ${order.shippingAddress.country}`
-                        : '—'}
+                        : '-'}
                     </td>
                     <td>
                       <Link to={`/order-confirmation/${order._id}`} className="view-order-btn">
@@ -98,6 +140,29 @@ const MyOrders = () => {
                 ))}
               </tbody>
             </table>
+            {pagination.totalPages > 1 && (
+              <div className="orders-pagination">
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={!pagination.hasPrevPage}
+                >
+                  Previous
+                </button>
+                <span className="pagination-info">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={!pagination.hasNextPage}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

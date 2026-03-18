@@ -82,7 +82,7 @@ const Hero = () => (
             className="btn-primary"
             onClick={() => document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' })}
           >
-            Shop Now →
+            Shop Now
           </button>
           <button className="btn-secondary">View Best Sellers</button>
         </div>

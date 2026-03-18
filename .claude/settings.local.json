@@ -19,7 +19,8 @@
       "Bash(taskkill /F /IM node.exe)",
       "Bash(powershell -Command \"Stop-Process -Name node -Force -ErrorAction SilentlyContinue\")",
       "Bash(sleep 3 && curl -s http://localhost:5000/api/products | head -c 500)",
-      "Bash(curl -s http://localhost:5000/api/products | grep -o '\"name\":\"Fish Oil[^\"]*\",\"image\":\"[^\"]*\"')"
+      "Bash(curl -s http://localhost:5000/api/products | grep -o '\"name\":\"Fish Oil[^\"]*\",\"image\":\"[^\"]*\"')",
+      "Bash(cd:*)"
     ]
   }
 }

@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import PasswordToggleIcon from '../components/PasswordToggleIcon';
+import { isValidEmail } from '../utils/validation';
 
 const Signup = () => {
   const navigate = useNavigate();
-  const { loginUser } = useAuth();
 
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [error, setError]       = useState('');
+  const [success, setSuccess]   = useState('');
   const [loading, setLoading]   = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -18,6 +21,7 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -25,6 +29,10 @@ const Signup = () => {
     }
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
+      return;
+    }
+    if (!isValidEmail(formData.email)) {
+      setError('Please enter a valid email address');
       return;
     }
 
@@ -47,8 +55,14 @@ const Signup = () => {
         return;
       }
 
-      loginUser(data.token, data.user);
-      navigate('/');
+      setSuccess(data.message || 'Account created successfully. Please verify your email before signing in.');
+      setTimeout(() => {
+        navigate('/login', {
+          state: {
+            message: 'Account created successfully. Please verify your email before signing in.'
+          }
+        });
+      }, 1600);
     } catch (err) {
       setError('Network error. Please try again.');
     } finally {
@@ -63,6 +77,7 @@ const Signup = () => {
         <p className="auth-subtitle">Join HealthFuel Store today</p>
 
         {error && <div className="auth-error">{error}</div>}
+        {success && <div className="auth-success">{success}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
@@ -91,26 +106,46 @@ const Signup = () => {
 
           <div className="form-group">
             <label>Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Minimum 6 characters"
-              required
-            />
+            <div className="password-field">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Minimum 6 characters"
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                <PasswordToggleIcon visible={showPassword} />
+              </button>
+            </div>
           </div>
 
           <div className="form-group">
             <label>Confirm Password</label>
-            <input
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Repeat your password"
-              required
-            />
+            <div className="password-field">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Repeat your password"
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+              >
+                <PasswordToggleIcon visible={showConfirmPassword} />
+              </button>
+            </div>
           </div>
 
           <button type="submit" className="auth-btn" disabled={loading}>

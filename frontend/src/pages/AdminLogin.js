@@ -1,38 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAdminAuth } from '../context/AdminAuthContext';
+import logo from '../images/logo.png';
 import PasswordToggleIcon from '../components/PasswordToggleIcon';
 import { isValidEmail } from '../utils/validation';
 
-const Login = () => {
-  const navigate  = useNavigate();
-  const location = useLocation();
-  const { loginUser } = useAuth();
+const AdminLogin = () => {
+  const navigate = useNavigate();
+  const { adminUser, loginAdmin } = useAdminAuth();
 
   const [formData, setFormData] = useState({ email: '', password: '' });
-  const [error, setError]       = useState('');
-  const [message, setMessage]   = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (location.state?.message) {
-      setMessage(location.state.message);
-      navigate(location.pathname, { replace: true, state: {} });
+    if (adminUser) {
+      navigate('/dashboard');
     }
-  }, [location.pathname, location.state, navigate]);
+  }, [adminUser, navigate]);
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     setError('');
-    setMessage('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setMessage('');
 
     if (!isValidEmail(formData.email)) {
       setError('Please enter a valid email address');
@@ -47,23 +43,20 @@ const Login = () => {
     }
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch('http://localhost:5000/api/admin/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
 
       const data = await res.json();
-
       if (!res.ok) {
-        setError(data.error || 'Login failed');
+        setError(data.error || 'Admin login failed');
         return;
       }
 
-      // loginUser stores the token and sets user in context
-      loginUser(data.token, data.user);
-      // Navigate to home — CartContext will auto-load the DB cart
-      navigate('/');
+      loginAdmin(data.token, data.user);
+      navigate('/dashboard');
     } catch (err) {
       setError('Network error. Please try again.');
     } finally {
@@ -72,15 +65,14 @@ const Login = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <h1>Welcome Back</h1>
-        <p className="auth-subtitle">Sign in to your HealthFuel account</p>
+    <div className="admin-login-page">
+      <div className="admin-login-card">
+        <img src={logo} alt="HealthFuel Store" className="admin-login-logo" />
+        <h1 style={{ textAlign: "center" }}>Login</h1>
 
-        {error && <div className="auth-error">{error}</div>}
-        {message && <div className="auth-success">{message}</div>}
+        {error && <div className="admin-alert error">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form className="admin-login-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Email Address</label>
             <input
@@ -88,14 +80,14 @@ const Login = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="you@example.com"
+              placeholder="admin@example.com"
               required
             />
           </div>
 
           <div className="form-group">
             <label>Password</label>
-            <div className="password-field">
+            <div className="admin-password-field">
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="password"
@@ -106,7 +98,7 @@ const Login = () => {
               />
               <button
                 type="button"
-                className="password-toggle"
+                className="admin-password-toggle"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
@@ -115,21 +107,17 @@ const Login = () => {
             </div>
           </div>
 
-          <div className="auth-helper-row">
-            <Link to="/forgot-password" className="auth-inline-link">Forgot password?</Link>
+          <div className="admin-helper-row">
+            <Link to="/admin/forgot-password" className="admin-inline-link">Forgot password?</Link>
           </div>
 
-          <button type="submit" className="auth-btn" disabled={loading}>
+          <button type="submit" className="admin-primary-btn" disabled={loading}>
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-
-        <p className="auth-switch">
-          Don't have an account? <Link to="/signup">Sign up</Link>
-        </p>
       </div>
     </div>
   );
 };
 
-export default Login;
+export default AdminLogin;

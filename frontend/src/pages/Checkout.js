@@ -112,9 +112,9 @@ const OrderSummaryPanel = ({ cartItems, cartTotal, selectedRate, finalTotal }) =
           <span>${cartTotal.toFixed(2)}</span>
         </div>
         <div className="summary-row">
-          <span>Shipping</span>
+          <span>{selectedRate ? `Shipping (${selectedRate.service})` : 'Shipping'}</span>
           <span className={selectedRate ? '' : 'free'}>
-            {selectedRate ? `$${shippingCost.toFixed(2)}` : 'Select at checkout'}
+            {selectedRate ? `$${shippingCost.toFixed(2)}` : 'Calculated after address is entered'}
           </span>
         </div>
         <div className="summary-total">
@@ -237,67 +237,6 @@ const AddressFields = ({ prefix, fieldKey, formData, errors, onInputChange, addr
     </div>
   </>
 );
-
-// ── Shipping Rates Section ─────────────────────────────────────────────────────
-const ShippingRatesSection = ({ rates, selectedRate, onSelectRate, loading, error, hasAddress }) => {
-  if (!hasAddress) {
-    return (
-      <div className="shipping-rates-section">
-        <div className="shipping-rates-placeholder">
-          <span className="shipping-rates-icon">📦</span>
-          <p>Enter your shipping address above to see available shipping rates</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="shipping-rates-section">
-        <div className="shipping-rates-loading">
-          <span className="shipping-spinner" />
-          <p>Fetching shipping rates...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="shipping-rates-section">
-        <div className="shipping-rates-error">⚠️ {error}</div>
-      </div>
-    );
-  }
-
-  if (!rates || rates.length === 0) return null;
-
-  return (
-    <div className="shipping-rates-section">
-      <div className="shipping-rates-list">
-        {rates.map(rate => (
-          <label
-            key={rate.code}
-            className={`shipping-rate-option ${selectedRate?.code === rate.code ? 'selected' : ''}`}
-          >
-            <input
-              type="radio"
-              name="shippingRate"
-              value={rate.code}
-              checked={selectedRate?.code === rate.code}
-              onChange={() => onSelectRate(rate)}
-            />
-            <div className="shipping-rate-info">
-              <span className="shipping-rate-name">{rate.service}</span>
-              <span className="shipping-rate-days">{rate.days}</span>
-            </div>
-            <span className="shipping-rate-price">${rate.price.toFixed(2)}</span>
-          </label>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 // ── Checkout Form ──────────────────────────────────────────────────────────────
 const CheckoutForm = ({ total, selectedShipping, setSelectedShipping }) => {
@@ -467,29 +406,48 @@ const CheckoutForm = ({ total, selectedShipping, setSelectedShipping }) => {
   }, [errors]);
 
   const validateForm = () => {
-    const newErrors = {};
-    if (!validateEmail(formData.customerEmail)) newErrors.customerEmail = 'Valid email is required';
-    if (!validatePhone(formData.customerPhone)) newErrors.customerPhone = 'Invalid phone format';
-    if (!validateRequired(formData.shippingAddress.firstName)) newErrors.shippingFirstName = 'Required';
-    if (!validateRequired(formData.shippingAddress.lastName)) newErrors.shippingLastName = 'Required';
-    if (!formData.shippingAddress.addressLine1?.trim()) newErrors.shippingAddressLine1 = 'Required';
-    if (!formData.shippingAddress.country) newErrors.shippingCountry = 'Required';
-    if (!formData.shippingAddress.state) newErrors.shippingState = 'Required';
-    if (!validateRequired(formData.shippingAddress.city)) newErrors.shippingCity = 'Required';
-    if (!validateZipCode(formData.shippingAddress.zipCode)) newErrors.shippingZipCode = 'Valid ZIP required';
-    if (!formData.sameAsBilling) {
-      if (!validateRequired(formData.billingAddress.firstName)) newErrors.billingFirstName = 'Required';
-      if (!validateRequired(formData.billingAddress.lastName)) newErrors.billingLastName = 'Required';
-      if (!formData.billingAddress.addressLine1?.trim()) newErrors.billingAddressLine1 = 'Required';
-      if (!formData.billingAddress.country) newErrors.billingCountry = 'Required';
-      if (!formData.billingAddress.state) newErrors.billingState = 'Required';
-      if (!validateRequired(formData.billingAddress.city)) newErrors.billingCity = 'Required';
-      if (!validateZipCode(formData.billingAddress.zipCode)) newErrors.billingZipCode = 'Valid ZIP required';
-    }
-    if (!selectedRate && shippingRates.length > 0) newErrors.shippingRate = 'Please select a shipping method';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const newErrors = {};
+
+  if (!validateEmail(formData.customerEmail)) 
+    newErrors.customerEmail = 'Please enter a valid email';
+  if (!validatePhone(formData.customerPhone)) 
+    newErrors.customerPhone = 'Please enter a valid phone number';
+  if (!validateRequired(formData.shippingAddress.firstName)) 
+    newErrors.shippingFirstName = 'Please enter first name';
+  if (!validateRequired(formData.shippingAddress.lastName)) 
+    newErrors.shippingLastName = 'Please enter last name';
+  if (!formData.shippingAddress.addressLine1?.trim()) 
+    newErrors.shippingAddressLine1 = 'Please enter address';
+  if (!formData.shippingAddress.country) 
+    newErrors.shippingCountry = 'Please select country';
+  if (!formData.shippingAddress.state) 
+    newErrors.shippingState = 'Please select state';
+  if (!validateRequired(formData.shippingAddress.city)) 
+    newErrors.shippingCity = 'Please enter city';
+  if (!validateZipCode(formData.shippingAddress.zipCode)) 
+    newErrors.shippingZipCode = 'Please enter a valid ZIP code';
+
+  if (!formData.sameAsBilling) {
+    if (!validateRequired(formData.billingAddress.firstName)) 
+      newErrors.billingFirstName = 'Please enter first name';
+    if (!validateRequired(formData.billingAddress.lastName)) 
+      newErrors.billingLastName = 'Please enter last name';
+    if (!formData.billingAddress.addressLine1?.trim()) 
+      newErrors.billingAddressLine1 = 'Please enter address';
+    if (!formData.billingAddress.country) 
+      newErrors.billingCountry = 'Please select country';
+    if (!formData.billingAddress.state) 
+      newErrors.billingState = 'Please select state';
+    if (!validateRequired(formData.billingAddress.city)) 
+      newErrors.billingCity = 'Please enter city';
+    if (!validateZipCode(formData.billingAddress.zipCode)) 
+      newErrors.billingZipCode = 'Please enter a valid ZIP code';
+  }
+  if (!selectedRate && shippingRates.length > 0) 
+    newErrors.shippingRate = 'Please select a shipping method';
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -719,24 +677,6 @@ const CheckoutForm = ({ total, selectedShipping, setSelectedShipping }) => {
         {/* Payment Details */}
         <div className="form-section">
           <div className="form-section-title">Payment Details</div>
-
-          {/* Order total with shipping breakdown */}
-          {selectedRate && (
-            <div className="payment-summary">
-              <div className="payment-summary-row">
-                <span>Subtotal</span>
-                <span>${total.toFixed(2)}</span>
-              </div>
-              <div className="payment-summary-row">
-                <span>Shipping ({selectedRate.service})</span>
-                <span>${shippingCost.toFixed(2)}</span>
-              </div>
-              <div className="payment-summary-row total">
-                <span>Total</span>
-                <span>${finalTotal.toFixed(2)}</span>
-              </div>
-            </div>
-          )}
 
           <div className="card-fields">
             <div className="form-group">
