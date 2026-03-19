@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { getApiUrl } from '../utils/api';
 
 const OrderConfirmation = () => {
   const { orderId } = useParams();
@@ -8,7 +9,7 @@ const OrderConfirmation = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/orders/${orderId}`)
+    fetch(getApiUrl(`/api/orders/${orderId}`))
       .then(res => {
         if (!res.ok) throw new Error('Order not found');
         return res.json();

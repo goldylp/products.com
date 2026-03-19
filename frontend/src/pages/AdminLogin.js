@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import logo from '../images/logo.png';
 import PasswordToggleIcon from '../components/PasswordToggleIcon';
+import { getApiUrl } from '../utils/api';
 import { isValidEmail } from '../utils/validation';
 
 const AdminLogin = () => {
@@ -43,7 +44,7 @@ const AdminLogin = () => {
     }
 
     try {
-      const res = await fetch('http://localhost:5000/api/admin/auth/login', {
+      const res = await fetch(getApiUrl('/api/admin/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

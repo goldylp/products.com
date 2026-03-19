@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getApiUrl } from '../utils/api';
 
 const ORDERS_PER_PAGE = 10;
 
@@ -30,7 +31,7 @@ const MyOrders = () => {
     setLoading(true);
     setError('');
 
-    fetch(`http://localhost:5000/api/my-orders?page=${currentPage}&limit=${ORDERS_PER_PAGE}`, {
+    fetch(getApiUrl(`/api/my-orders?page=${currentPage}&limit=${ORDERS_PER_PAGE}`), {
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
     })
       .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch orders'))

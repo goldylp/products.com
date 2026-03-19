@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import PasswordToggleIcon from '../components/PasswordToggleIcon';
+import { getApiUrl } from '../utils/api';
 import { isValidEmail } from '../utils/validation';
 
 const Signup = () => {
@@ -38,7 +39,7 @@ const Signup = () => {
 
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/auth/signup', {
+      const res = await fetch(getApiUrl('/api/auth/signup'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import PasswordToggleIcon from '../components/PasswordToggleIcon';
+import { getApiUrl } from '../utils/api';
 import { isValidEmail } from '../utils/validation';
 
 const Login = () => {
@@ -47,7 +48,7 @@ const Login = () => {
     }
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(getApiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import logo from '../images/logo.png';
+import { getApiUrl } from '../utils/api';
 import { isValidEmail } from '../utils/validation';
 
 const AdminForgotPassword = () => {
@@ -22,7 +23,7 @@ const AdminForgotPassword = () => {
     }
 
     try {
-      const res = await fetch('http://localhost:5000/api/admin/auth/forgot-password', {
+      const res = await fetch(getApiUrl('/api/admin/auth/forgot-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })

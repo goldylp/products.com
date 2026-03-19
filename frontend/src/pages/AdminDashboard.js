@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import PasswordToggleIcon from '../components/PasswordToggleIcon';
 import logo from '../images/logo.png';
+import { getApiUrl } from '../utils/api';
 import { isNonEmpty, isNonNegativeNumber, isPositiveNumber, isValidEmail, isValidImageReference } from '../utils/validation';
 
 const PRODUCT_FORM_INITIAL = {
@@ -130,7 +131,7 @@ const AdminDashboard = () => {
   }, [activeTab]);
 
   const adminFetch = useCallback(async (path, options = {}) => {
-    const response = await fetch(`http://localhost:5000${path}`, {
+    const response = await fetch(getApiUrl(path), {
       ...options,
       headers: {
         'Content-Type': 'application/json',

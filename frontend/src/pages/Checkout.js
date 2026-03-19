@@ -11,9 +11,10 @@ import {
 } from '@stripe/react-stripe-js';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { getApiUrl, STRIPE_PUBLISHABLE_KEY } from '../utils/api';
 import './Checkout.css';
 
-const stripePromise = loadStripe('pk_test_51T9n5MHXAZgOY02NKj4S3c7gZ5RB5JpXI8Rnl9ZKc8rJDHzEs6Oc4PfMUYaXggdqxFZ5Xx9HqlANo2Q0WcpMw78N00IgJ9eUI8');
+const stripePromise = STRIPE_PUBLISHABLE_KEY ? loadStripe(STRIPE_PUBLISHABLE_KEY) : null;
 
 const COUNTRIES_STATES = {
   'United States': {
@@ -344,7 +345,7 @@ const CheckoutForm = ({ total, selectedShipping, setSelectedShipping }) => {
       setRatesLoading(true);
       setRatesError(null);
       try {
-        const res = await fetch('http://localhost:5000/api/shipping/rates', {
+        const res = await fetch(getApiUrl('/api/shipping/rates'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -463,7 +464,7 @@ const CheckoutForm = ({ total, selectedShipping, setSelectedShipping }) => {
       const shippingAmount = selectedRate ? selectedRate.price : 0;
       const finalTotal = total + shippingAmount;
 
-      const intentRes = await fetch('http://localhost:5000/api/create-payment-intent', {
+      const intentRes = await fetch(getApiUrl('/api/create-payment-intent'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: finalTotal })
@@ -502,7 +503,7 @@ const CheckoutForm = ({ total, selectedShipping, setSelectedShipping }) => {
               country: formData.billingAddress.country
             };
 
-        const orderResponse = await fetch('http://localhost:5000/api/orders', {
+        const orderResponse = await fetch(getApiUrl('/api/orders'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
           body: JSON.stringify({

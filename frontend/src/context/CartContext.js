@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { getApiUrl } from '../utils/api';
 
 const CartContext = createContext();
 
@@ -25,7 +26,7 @@ export const CartProvider = ({ children }) => {
   // This is the key feature: replaces localStorage cart with the DB cart.
   useEffect(() => {
     if (!user) return;
-    fetch('http://localhost:5000/api/cart', {
+    fetch(getApiUrl('/api/cart'), {
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
     })
       .then(res => res.ok ? res.json() : Promise.reject())
@@ -44,7 +45,7 @@ export const CartProvider = ({ children }) => {
 
     // Additionally sync to MongoDB if logged in
     if (user) {
-      fetch('http://localhost:5000/api/cart/sync', {
+      fetch(getApiUrl('/api/cart/sync'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify({ cart: cartItems })
@@ -85,7 +86,7 @@ export const CartProvider = ({ children }) => {
     localStorage.removeItem('cart');
     // Also clear in DB if logged in
     if (user) {
-      fetch('http://localhost:5000/api/cart/sync', {
+      fetch(getApiUrl('/api/cart/sync'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify({ cart: [] })

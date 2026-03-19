@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCart } from '../context/CartContext';
+import { getApiUrl } from '../utils/api';
 
 const CATEGORIES = ['All', 'Protein', 'Pre-Workout', 'Vitamins', 'Recovery'];
 
@@ -111,7 +112,7 @@ const ProductList = () => {
   const { addToCart } = useCart();
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/products')
+    fetch(getApiUrl('/api/products'))
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch products');
         return res.json();
