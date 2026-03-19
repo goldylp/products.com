@@ -7,6 +7,8 @@ const {
   normalizeText
 } = require('../utils/common');
 
+const PRODUCT_BADGE_OPTIONS = ['', 'BEST SELLER', 'NEW', 'SALE'];
+
 const validateProductPayload = (payload, { partial = false } = {}) => {
   const data = { ...payload };
 
@@ -32,6 +34,10 @@ const validateProductPayload = (payload, { partial = false } = {}) => {
   if (data.weight !== undefined) data.weight = Number(data.weight) || 1;
   if (data.stock !== undefined) data.stock = Number(data.stock) || 0;
   if (data.category !== undefined) data.category = normalizeText(data.category) || 'General';
+  if (data.badge !== undefined) {
+    data.badge = normalizeText(data.badge).toUpperCase();
+    if (!PRODUCT_BADGE_OPTIONS.includes(data.badge)) return { error: 'Please select a valid badge' };
+  }
   if (data.description !== undefined) data.description = normalizeText(data.description);
 
   return { data };

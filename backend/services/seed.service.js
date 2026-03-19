@@ -10,9 +10,9 @@ const seedProducts = async () => {
   }
 
   await Product.insertMany([
-    { name: 'Whey Protein Isolate - 5lbs', image: 'https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=400', price: 79.99, category: 'Protein', description: 'Fast-absorbing isolate formula for lean muscle support.', stock: 40 },
-    { name: 'Pre-Workout Energy - 30 Servings', image: 'https://images.unsplash.com/photo-1546483875-ad9014c88eba?w=400', price: 49.99, category: 'Pre-Workout', description: 'Clean energy blend for focus and endurance.', stock: 32 },
-    { name: 'Creatine Monohydrate - 60 Caps', image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400', price: 29.99, category: 'Performance', description: 'Micronized creatine support for strength and power.', stock: 58 },
+    { name: 'Whey Protein Isolate - 5lbs', image: 'https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=400', price: 79.99, category: 'Protein', badge: 'BEST SELLER', description: 'Fast-absorbing isolate formula for lean muscle support.', stock: 40 },
+    { name: 'Pre-Workout Energy - 30 Servings', image: 'https://images.unsplash.com/photo-1546483875-ad9014c88eba?w=400', price: 49.99, category: 'Pre-Workout', badge: 'NEW', description: 'Clean energy blend for focus and endurance.', stock: 32 },
+    { name: 'Creatine Monohydrate - 60 Caps', image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400', price: 29.99, category: 'Performance', badge: 'SALE', description: 'Micronized creatine support for strength and power.', stock: 58 },
     { name: 'Multi-Vitamin Complex', image: 'https://images.unsplash.com/photo-1550572017-edd951b55104?w=400', price: 34.99, category: 'Vitamins', description: 'Daily micronutrient support for active lifestyles.', stock: 44 },
     { name: 'BCAA Recovery - 40 Servings', image: 'https://images.unsplash.com/photo-1594381898411-846e7d193883?w=400', price: 39.99, category: 'Recovery', description: 'Essential amino acids to support recovery and hydration.', stock: 26 },
     { name: 'Casein Protein - 2lbs', image: 'https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?w=400', price: 54.99, category: 'Protein', description: 'Slow-digesting protein ideal for overnight recovery.', stock: 18 },

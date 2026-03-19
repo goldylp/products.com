@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useCart } from '../context/CartContext';
 import { getApiUrl } from '../utils/api';
 
-const CATEGORIES = ['All', 'Protein', 'Pre-Workout', 'Vitamins', 'Recovery'];
+const CATEGORIES = ['All', 'Protein', 'Pre-Workout', 'Performance', 'Vitamins', 'Recovery', 'General'];
 
 const getCategoryFromName = (name) => {
   const n = name.toLowerCase();
@@ -13,7 +13,6 @@ const getCategoryFromName = (name) => {
   return 'Protein';
 };
 
-const BADGES = ['BEST SELLER', 'NEW', 'SALE', '', 'BEST SELLER', '', 'NEW'];
 const MOCK_REVIEWS = [142, 384, 97, 516, 228, 73, 189, 301];
 
 const StarRating = ({ reviews }) => (
@@ -25,7 +24,7 @@ const StarRating = ({ reviews }) => (
 
 const ProductCard = ({ product, index, onAddToCart }) => {
   const [added, setAdded] = useState(false);
-  const badge = BADGES[index % BADGES.length];
+  const badge = (product.badge || '').trim();
   const reviews = MOCK_REVIEWS[index % MOCK_REVIEWS.length];
 
   const handleAdd = () => {
@@ -39,7 +38,7 @@ const ProductCard = ({ product, index, onAddToCart }) => {
       <div className="product-image-container">
         <img src={product.image} alt={product.name} className="product-image" loading="lazy" />
         {badge && (
-          <span className={`product-badge badge-${badge.toLowerCase().replace(' ', '')}`}>
+          <span className={`product-badge badge-${badge.toLowerCase().replace(/\s+/g, '')}`}>
             {badge}
           </span>
         )}
@@ -49,7 +48,7 @@ const ProductCard = ({ product, index, onAddToCart }) => {
       </div>
 
       <div className="product-info">
-        <div className="product-category">{getCategoryFromName(product.name)}</div>
+        <div className="product-category">{product.category || getCategoryFromName(product.name)}</div>
         <h3 className="product-name">{product.name}</h3>
         <StarRating reviews={reviews} />
         <div className="product-price-row">
@@ -66,7 +65,7 @@ const ProductCard = ({ product, index, onAddToCart }) => {
   );
 };
 
-const Hero = () => (
+const Hero = ({ onShopNow }) => (
   <section className="hero">
     <div className="hero-inner">
       <div className="hero-content">
@@ -80,23 +79,11 @@ const Hero = () => (
         </p>
         <div className="hero-cta-group">
           <button
-            className="btn-primary"
-            onClick={() => document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' })}
+            className="btn-secondary"
+            onClick={onShopNow}
           >
             Shop Now
           </button>
-          <button className="btn-secondary">View Best Sellers</button>
-        </div>
-        <div className="hero-trust">
-          {['Free shipping over $50', 'Secure payments', '4.9/5 star rating'].map(item => (
-            <div key={item} className="hero-trust-item">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              {item}
-            </div>
-          ))}
         </div>
       </div>
     </div>
@@ -123,7 +110,7 @@ const ProductList = () => {
 
   const filtered = useMemo(() => {
     if (activeCategory === 'All') return products;
-    return products.filter(p => getCategoryFromName(p.name) === activeCategory);
+    return products.filter((product) => (product.category || getCategoryFromName(product.name)) === activeCategory);
   }, [products, activeCategory]);
 
   const sorted = useMemo(() => {
@@ -134,12 +121,27 @@ const ProductList = () => {
     return arr;
   }, [filtered, sortBy]);
 
+  const handleShopNow = () => {
+    const target = document.getElementById('products-anchor');
+    if (!target) {
+      return;
+    }
+
+    const headerHeight = document.querySelector('.header')?.offsetHeight || 0;
+    const targetTop = target.getBoundingClientRect().top + window.scrollY - headerHeight - 16;
+
+    window.scrollTo({
+      top: Math.max(targetTop, 0),
+      behavior: 'smooth'
+    });
+  };
+
   return (
     <div>
-      <Hero />
+      <Hero onShopNow={handleShopNow} />
 
       <div className="product-list-page" id="products-section">
-        <div className="section-header">
+        <div className="section-header" id="products-anchor">
           <div>
             <h2 className="section-title">Our Products</h2>
             <p className="section-subtitle">Science-backed supplements for every goal</p>

@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
+import 'sweetalert2/dist/sweetalert2.min.css';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import PasswordToggleIcon from '../components/PasswordToggleIcon';
 import logo from '../images/logo.png';
@@ -12,7 +14,8 @@ const PRODUCT_FORM_INITIAL = {
   image: '',
   price: '',
   weight: '',
-  category: '',
+  category: 'General',
+  badge: '',
   description: '',
   stock: '',
   isActive: true
@@ -38,6 +41,13 @@ const ADMIN_SECTION_PATHS = {
 };
 
 const TABLE_PAGE_SIZE = 10;
+const PRODUCT_CATEGORY_OPTIONS = ['General', 'Protein', 'Pre-Workout', 'Performance', 'Vitamins', 'Recovery'];
+const PRODUCT_BADGE_OPTIONS = [
+  { value: '', label: 'No Badge' },
+  { value: 'BEST SELLER', label: 'Best Seller' },
+  { value: 'NEW', label: 'New' },
+  { value: 'SALE', label: 'Sale' }
+];
 
 const formatMoney = (amount) => `$${Number(amount || 0).toFixed(2)}`;
 const getInitials = (name = 'Admin') => name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'A';
@@ -67,6 +77,30 @@ const buildRecordLabel = (tab, id) => {
   return `${prefixes[tab] || 'Record'} #${shortId(id)}`;
 };
 
+const adminSwal = Swal.mixin({
+  buttonsStyling: false,
+  customClass: {
+    popup: 'admin-swal-popup',
+    title: 'admin-swal-title',
+    htmlContainer: 'admin-swal-text',
+    actions: 'admin-swal-actions',
+    confirmButton: 'admin-primary-btn admin-swal-confirm',
+    cancelButton: 'admin-secondary-btn admin-swal-cancel'
+  }
+});
+
+const adminToast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 4000,
+  timerProgressBar: true,
+  customClass: {
+    popup: 'admin-swal-toast',
+    title: 'admin-swal-toast-title'
+  }
+});
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -74,11 +108,9 @@ const AdminDashboard = () => {
   const adminUserId = adminUser?._id;
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [uploadingField, setUploadingField] = useState('');
   const [showAdminUserPassword, setShowAdminUserPassword] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState(null);
   const [tablePages, setTablePages] = useState({
     products: 1,
     customers: 1,
@@ -188,6 +220,7 @@ const AdminDashboard = () => {
       [
         product.name,
         product.category,
+        product.badge,
         product.description,
         product.price,
         product.stock
@@ -258,8 +291,29 @@ const AdminDashboard = () => {
 
   const resetNotifications = () => {
     setError('');
-    setMessage('');
   };
+
+  const showSuccessAlert = useCallback((text) => {
+    adminToast.fire({ icon: 'success', title: text });
+  }, []);
+
+  const showErrorAlert = useCallback((text, title = 'Action failed') => {
+    adminSwal.fire({
+      icon: 'error',
+      title,
+      text,
+      confirmButtonText: 'OK'
+    });
+  }, []);
+
+  const showValidationAlert = useCallback((text) => {
+    adminSwal.fire({
+      icon: 'warning',
+      title: 'Please check the form',
+      text,
+      confirmButtonText: 'OK'
+    });
+  }, []);
 
   const getPaginationMeta = (tab, items) => {
     const totalPages = Math.max(1, Math.ceil(items.length / TABLE_PAGE_SIZE));
@@ -333,8 +387,9 @@ const AdminDashboard = () => {
     );
   };
 
-  const renderTableSearch = (tab, placeholder) => (
+  const renderTableSearch = (tab, placeholder, actionButton = null) => (
     <div className="admin-table-toolbar">
+      {actionButton}
       <input
         type="search"
         className="admin-table-search"
@@ -456,9 +511,9 @@ const AdminDashboard = () => {
     try {
       const imageUrl = await uploadImage(file, 'product');
       setProductForm((prev) => ({ ...prev, image: imageUrl }));
-      setMessage('Product image uploaded successfully.');
+      showSuccessAlert('Product image uploaded successfully.');
     } catch (err) {
-      setError(err.message);
+      showErrorAlert(err.message);
     } finally {
       setUploadingField('');
       event.target.value = '';
@@ -474,9 +529,9 @@ const AdminDashboard = () => {
     try {
       const imageUrl = await uploadImage(file, 'admin');
       setAdminUserForm((prev) => ({ ...prev, profileImage: imageUrl }));
-      setMessage('Admin profile image uploaded successfully.');
+      showSuccessAlert('Admin profile image uploaded successfully.');
     } catch (err) {
-      setError(err.message);
+      showErrorAlert(err.message);
     } finally {
       setUploadingField('');
       event.target.value = '';
@@ -489,19 +544,20 @@ const AdminDashboard = () => {
     navigate('/admin/login');
   };
 
-  const handleDelete = (resource, id, successMessage) => {
-    setPendingDelete({ resource, id, successMessage });
-  };
-
-  const closeDeleteModal = () => {
-    setPendingDelete(null);
-  };
-
-  const confirmDelete = async () => {
-    if (!pendingDelete) return;
-
+  const handleDelete = async (resource, id, successMessage) => {
     resetNotifications();
-    const { resource, id, successMessage } = pendingDelete;
+    const result = await adminSwal.fire({
+      icon: 'warning',
+      title: 'Are you sure you want to delete this record?',
+      showCancelButton: true,
+      confirmButtonText: 'Yes',
+      cancelButtonText: 'No',
+      reverseButtons: true
+    });
+
+    if (!result.isConfirmed) {
+      return;
+    }
 
     try {
       await adminFetch(`/api/admin/${resource}/${id}`, { method: 'DELETE' });
@@ -521,10 +577,9 @@ const AdminDashboard = () => {
           navigate('/users');
         }
       }
-      setMessage(successMessage);
-      setPendingDelete(null);
+      showSuccessAlert(successMessage);
     } catch (err) {
-      setError(err.message);
+      showErrorAlert(err.message);
     }
   };
 
@@ -540,9 +595,9 @@ const AdminDashboard = () => {
       if (productForm._id === updatedProduct._id) {
         setProductForm((prev) => ({ ...prev, ...updatedProduct }));
       }
-      setMessage(`Product ${product.isActive ? 'disabled' : 'enabled'} successfully.`);
+      showSuccessAlert(`Product ${product.isActive ? 'disabled' : 'enabled'} successfully.`);
     } catch (err) {
-      setError(err.message);
+      showErrorAlert(err.message);
     }
   };
 
@@ -551,27 +606,27 @@ const AdminDashboard = () => {
     resetNotifications();
 
     if (!isNonEmpty(productForm.name)) {
-      setError('Product name is required');
+      showValidationAlert('Product name is required');
       return;
     }
     if (!isNonEmpty(productForm.image)) {
-      setError('Image URL is required');
+      showValidationAlert('Image URL is required');
       return;
     }
     if (!isValidImageReference(productForm.image)) {
-      setError('Please provide a valid image URL or uploaded image path');
+      showValidationAlert('Please provide a valid image URL or uploaded image path');
       return;
     }
     if (!isPositiveNumber(productForm.price)) {
-      setError('Price must be greater than 0');
+      showValidationAlert('Price must be greater than 0');
       return;
     }
     if (productForm.weight !== '' && !isPositiveNumber(productForm.weight)) {
-      setError('Weight must be greater than 0');
+      showValidationAlert('Weight must be greater than 0');
       return;
     }
     if (productForm.stock !== '' && !isNonNegativeNumber(productForm.stock)) {
-      setError('Stock cannot be negative');
+      showValidationAlert('Stock cannot be negative');
       return;
     }
 
@@ -582,6 +637,7 @@ const AdminDashboard = () => {
       price: Number(productForm.price),
       weight: Number(productForm.weight || 1),
       category: productForm.category.trim(),
+      badge: productForm.badge,
       description: productForm.description.trim(),
       stock: Number(productForm.stock || 0)
     };
@@ -591,17 +647,17 @@ const AdminDashboard = () => {
       if (productForm._id) {
         savedProduct = await adminFetch(`/api/admin/products/${productForm._id}`, { method: 'PUT', body: JSON.stringify(payload) });
         setProducts((prev) => upsertById(prev, savedProduct));
-        setMessage('Product updated successfully.');
+        showSuccessAlert('Product updated successfully.');
       } else {
         savedProduct = await adminFetch('/api/admin/products', { method: 'POST', body: JSON.stringify(payload) });
         setProducts((prev) => [savedProduct, ...prev]);
-        setMessage('Product created successfully.');
+        showSuccessAlert('Product created successfully.');
       }
 
       setProductForm({ ...PRODUCT_FORM_INITIAL, ...savedProduct });
-      navigate(`/products/${savedProduct._id}`, { replace: true });
+      navigate('/products', { replace: true });
     } catch (err) {
-      setError(err.message);
+      showErrorAlert(err.message);
     }
   };
 
@@ -610,11 +666,11 @@ const AdminDashboard = () => {
     resetNotifications();
 
     if (!isNonEmpty(customerForm.name)) {
-      setError('Customer name is required');
+      showValidationAlert('Customer name is required');
       return;
     }
     if (!isValidEmail(customerForm.email)) {
-      setError('Please enter a valid email address');
+      showValidationAlert('Please enter a valid email address');
       return;
     }
 
@@ -630,10 +686,10 @@ const AdminDashboard = () => {
           : customer
       )));
       setCustomerForm({ _id: updatedCustomer._id, name: updatedCustomer.name, email: updatedCustomer.email });
-      navigate(`/customers/${updatedCustomer._id}`, { replace: true });
-      setMessage('Customer updated successfully.');
+      navigate('/customers', { replace: true });
+      showSuccessAlert('Customer updated successfully.');
     } catch (err) {
-      setError(err.message);
+      showErrorAlert(err.message);
     }
   };
 
@@ -642,23 +698,23 @@ const AdminDashboard = () => {
     resetNotifications();
 
     if (!isNonEmpty(adminUserForm.name)) {
-      setError('Admin user name is required');
+      showValidationAlert('Admin user name is required');
       return;
     }
     if (!isValidEmail(adminUserForm.email)) {
-      setError('Please enter a valid email address');
+      showValidationAlert('Please enter a valid email address');
       return;
     }
     if (!adminUserForm._id && adminUserForm.password.length < 6) {
-      setError('Password must be at least 6 characters');
+      showValidationAlert('Password must be at least 6 characters');
       return;
     }
     if (adminUserForm.password && adminUserForm.password.length < 6) {
-      setError('Password must be at least 6 characters');
+      showValidationAlert('Password must be at least 6 characters');
       return;
     }
     if (adminUserForm.profileImage && !isValidImageReference(adminUserForm.profileImage)) {
-      setError('Please provide a valid profile image URL or uploaded image path');
+      showValidationAlert('Please provide a valid profile image URL or uploaded image path');
       return;
     }
 
@@ -677,10 +733,10 @@ const AdminDashboard = () => {
       let savedAdmin;
       if (adminUserForm._id) {
         savedAdmin = await adminFetch(`/api/admin/users/${adminUserForm._id}`, { method: 'PUT', body: JSON.stringify(payload) });
-        setMessage('Admin user updated successfully.');
+        showSuccessAlert('Admin user updated successfully.');
       } else {
         savedAdmin = await adminFetch('/api/admin/users', { method: 'POST', body: JSON.stringify(payload) });
-        setMessage('Admin user created successfully.');
+        showSuccessAlert('Admin user created successfully.');
       }
 
       if (savedAdmin && savedAdmin._id === adminUser?._id) {
@@ -698,37 +754,11 @@ const AdminDashboard = () => {
           role: savedAdmin.role,
           profileImage: savedAdmin.profileImage || ''
         });
-        navigate(`/users/${savedAdmin._id}`, { replace: true });
+        navigate('/users', { replace: true });
       }
     } catch (err) {
-      setError(err.message);
+      showErrorAlert(err.message);
     }
-  };
-
-  const renderSubviewTabs = (tab) => {
-    const isList = currentTabView?.mode === 'list';
-    const detailLabel = currentTabView?.mode === 'new'
-      ? `New ${tab === 'products' ? 'Product' : 'Admin User'}`
-      : currentTabView?.recordId
-        ? buildRecordLabel(tab, currentTabView.recordId)
-        : null;
-
-    return (
-      <div className="admin-subtabs">
-        <button
-          type="button"
-          className={`admin-subtab${isList ? ' active' : ''}`}
-          onClick={() => setListView(tab)}
-        >
-          {tab === 'products' ? 'All Products' : tab === 'customers' ? 'All Customers' : tab === 'orders' ? 'All Orders' : 'All Admin Users'}
-        </button>
-        {!isList && detailLabel && (
-          <button type="button" className="admin-subtab active">
-            {detailLabel}
-          </button>
-        )}
-      </div>
-    );
   };
 
   const renderProductsSection = () => {
@@ -737,32 +767,32 @@ const AdminDashboard = () => {
 
     return (
       <section className="admin-section">
-        <div className="admin-section-header">
-          <h2>Products</h2>
-          {isList ? (
-            <button type="button" className="admin-secondary-btn" onClick={() => openNewView('products')}>
-              New Product
-            </button>
-          ) : (
+        {!isList && (
+          <div className="admin-section-header">
             <button type="button" className="admin-secondary-btn" onClick={() => setListView('products')}>
               Back to Table
             </button>
-          )}
-        </div>
-        {renderSubviewTabs('products')}
-
+          </div>
+        )}
         {isList ? (
           <div className="admin-table-wrap">
-            {renderTableSearch('products', 'Search products by name, category, description, price or stock')}
+            {renderTableSearch(
+              'products',
+              'Search products by name, category, description, price or stock',
+              <button type="button" className="admin-secondary-btn" onClick={() => openNewView('products')}>
+                New Product
+              </button>
+            )}
             {paginationMeta.totalEntries ? (
               <>
                 <table className="admin-table">
-                  <thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>Name</th><th>Category</th><th>Badge</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
                   <tbody>
                     {paginationMeta.items.map((product) => (
                       <tr key={product._id}>
                         <td data-label="Name">{product.name}</td>
                         <td data-label="Category">{product.category || 'General'}</td>
+                        <td data-label="Badge">{product.badge || 'None'}</td>
                         <td data-label="Price">{formatMoney(product.price)}</td>
                         <td data-label="Stock">{product.stock}</td>
                         <td data-label="Status">
@@ -800,7 +830,22 @@ const AdminDashboard = () => {
               <input type="file" accept="image/*" onChange={handleProductImageUpload} />
               <small className="admin-field-hint">{uploadingField === 'product' ? 'Uploading image...' : 'Optional. Uploading will fill the Image URL field automatically.'}</small>
             </div>
-            <div className="form-group"><label>Category</label><input value={productForm.category} onChange={(e) => setProductForm((prev) => ({ ...prev, category: e.target.value }))} /></div>
+            <div className="form-group">
+              <label>Category</label>
+              <select value={productForm.category} onChange={(e) => setProductForm((prev) => ({ ...prev, category: e.target.value }))}>
+                {PRODUCT_CATEGORY_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Badge</label>
+              <select value={productForm.badge} onChange={(e) => setProductForm((prev) => ({ ...prev, badge: e.target.value }))}>
+                {PRODUCT_BADGE_OPTIONS.map((option) => (
+                  <option key={option.value || 'none'} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
             <div className="form-group"><label>Price</label><input type="number" step="0.01" value={productForm.price} onChange={(e) => setProductForm((prev) => ({ ...prev, price: e.target.value }))} required /></div>
             <div className="form-group"><label>Weight</label><input type="number" step="0.1" value={productForm.weight} onChange={(e) => setProductForm((prev) => ({ ...prev, weight: e.target.value }))} /></div>
             <div className="form-group"><label>Stock</label><input type="number" value={productForm.stock} onChange={(e) => setProductForm((prev) => ({ ...prev, stock: e.target.value }))} /></div>
@@ -824,16 +869,13 @@ const AdminDashboard = () => {
 
     return (
       <section className="admin-section">
-        <div className="admin-section-header">
-          <h2>Customers</h2>
-          {!isList && (
+        {!isList && (
+          <div className="admin-section-header">
             <button type="button" className="admin-secondary-btn" onClick={() => setListView('customers')}>
               Back to Table
             </button>
-          )}
-        </div>
-        {renderSubviewTabs('customers')}
-
+          </div>
+        )}
         {isList ? (
           <div className="admin-table-wrap">
             {renderTableSearch('customers', 'Search customers by name, email, orders, cart items or spend')}
@@ -884,16 +926,13 @@ const AdminDashboard = () => {
 
     return (
       <section className="admin-section">
-        <div className="admin-section-header">
-          <h2>Orders</h2>
-          {!isList && (
+        {!isList && (
+          <div className="admin-section-header admin-section-header-spaced">
             <button type="button" className="admin-secondary-btn" onClick={() => setListView('orders')}>
               Back to Table
             </button>
-          )}
-        </div>
-        {renderSubviewTabs('orders')}
-
+          </div>
+        )}
         {isList ? (
           <div className="admin-table-wrap">
             {renderTableSearch('orders', 'Search orders by ID, customer, status, total or shipping')}
@@ -986,23 +1025,22 @@ const AdminDashboard = () => {
 
     return (
       <section className="admin-section">
-        <div className="admin-section-header">
-          <h2>Admin Users</h2>
-          {isList ? (
-            <button type="button" className="admin-secondary-btn" onClick={() => openNewView('users')}>
-              New Admin User
-            </button>
-          ) : (
+        {!isList && (
+          <div className="admin-section-header">
             <button type="button" className="admin-secondary-btn" onClick={() => setListView('users')}>
               Back to Table
             </button>
-          )}
-        </div>
-        {renderSubviewTabs('users')}
-
+          </div>
+        )}
         {isList ? (
           <div className="admin-table-wrap">
-            {renderTableSearch('users', 'Search admin users by name, email or role')}
+            {renderTableSearch(
+              'users',
+              'Search admin users by name, email or role',
+              <button type="button" className="admin-secondary-btn" onClick={() => openNewView('users')}>
+                New Admin User
+              </button>
+            )}
             {paginationMeta.totalEntries ? (
               <>
                 <table className="admin-table">
@@ -1114,7 +1152,7 @@ const AdminDashboard = () => {
           <div>
             <h1>{TAB_TITLES[activeTab] || 'Admin Panel'}</h1>
             {activeTab === 'dashboard' && (
-              <p>View store performance and high-level totals in one place.</p>
+              <p>View store performance and totals in one place.</p>
             )}
           </div>
           <div className="admin-header-profile">
@@ -1146,13 +1184,9 @@ const AdminDashboard = () => {
         </div>
 
         {error && <div className="admin-alert error">{error}</div>}
-        {message && <div className="admin-alert success">{message}</div>}
 
         {activeTab === 'dashboard' && (
           <section className="admin-section">
-            <div className="admin-section-header">
-              <h2>Store Overview</h2>
-            </div>
             <div className="admin-stats-grid admin-stats-grid-dashboard">
               <div className="admin-stat-card"><span>Products</span><strong>{stats.products}</strong></div>
               <div className="admin-stat-card"><span>Customers</span><strong>{stats.customers}</strong></div>
@@ -1168,21 +1202,6 @@ const AdminDashboard = () => {
         {activeTab === 'users' && renderUsersSection()}
       </main>
 
-      {pendingDelete && (
-        <div className="admin-modal-backdrop" onClick={closeDeleteModal}>
-          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Are you sure you want to delete this record?</h3>
-            <div className="admin-modal-actions">
-              <button type="button" className="admin-primary-btn admin-danger-btn" onClick={confirmDelete}>
-                Yes
-              </button>
-              <button type="button" className="admin-secondary-btn" onClick={closeDeleteModal}>
-                No
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

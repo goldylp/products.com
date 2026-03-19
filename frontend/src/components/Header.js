@@ -48,6 +48,9 @@ const Header = () => {
         {/* Desktop nav */}
         <nav className="nav">
           <Link to="/" className="nav-link">Products</Link>
+          <Link to="/about" className="nav-link">About</Link>
+          <Link to="/blog" className="nav-link">Blog</Link>
+          <Link to="/contact" className="nav-link">Contact</Link>
           {user ? (
             <>
               <Link to="/my-orders" className="nav-link">My Orders</Link>
@@ -96,6 +99,9 @@ const Header = () => {
       {menuOpen && (
         <div className="mobile-menu">
           <Link to="/"          className="mobile-link" onClick={closeMenu}>Products</Link>
+          <Link to="/about" className="mobile-link" onClick={closeMenu}>About</Link>
+          <Link to="/blog" className="mobile-link" onClick={closeMenu}>Blog</Link>
+          <Link to="/contact" className="mobile-link" onClick={closeMenu}>Contact</Link>
           {user ? (
             <>
               <Link to="/my-orders" className="mobile-link" onClick={closeMenu}>My Orders</Link>

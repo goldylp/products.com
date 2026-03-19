@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { AdminAuthProvider } from './context/AdminAuthContext';
@@ -14,6 +14,9 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import MyOrders from './pages/MyOrders';
+import About from './pages/About';
+import Contact from './pages/Contact';
+import Blog from './pages/Blog';
 import AdminLogin from './pages/AdminLogin';
 import AdminForgotPassword from './pages/AdminForgotPassword';
 import AdminResetPassword from './pages/AdminResetPassword';
@@ -34,29 +37,29 @@ const Footer = () => (
       <div>
         <div className="footer-col-title">Shop</div>
         <ul className="footer-links">
-          <li><a href="/">All Products</a></li>
-          <li><a href="/">Protein</a></li>
-          <li><a href="/">Pre-Workout</a></li>
-          <li><a href="/">Vitamins</a></li>
+          <li><Link to="/">All Products</Link></li>
+          <li><Link to="/">Protein</Link></li>
+          <li><Link to="/">Pre-Workout</Link></li>
+          <li><Link to="/">Vitamins</Link></li>
         </ul>
       </div>
       <div>
         <div className="footer-col-title">Help</div>
         <ul className="footer-links">
-          <li><a href="/">FAQ</a></li>
-          <li><a href="/">Shipping Policy</a></li>
-          <li><a href="/">Returns</a></li>
-          <li><a href="/">Track Order</a></li>
-          <li><a href="/">Contact Us</a></li>
+          <li><Link to="/contact#faq">FAQ</Link></li>
+          <li><Link to="/contact">Shipping Questions</Link></li>
+          <li><Link to="/contact">Returns</Link></li>
+          <li><Link to="/my-orders">Track Order</Link></li>
+          <li><Link to="/contact">Contact Us</Link></li>
         </ul>
       </div>
       <div>
         <div className="footer-col-title">Company</div>
         <ul className="footer-links">
-          <li><a href="/">About Us</a></li>
-          <li><a href="/">Blog</a></li>
-          <li><a href="/">Privacy Policy</a></li>
-          <li><a href="/">Terms of Service</a></li>
+          <li><Link to="/about">About Us</Link></li>
+          <li><Link to="/blog">Blog</Link></li>
+          <li><Link to="/contact">Privacy Policy</Link></li>
+          <li><Link to="/contact">Terms of Service</Link></li>
         </ul>
       </div>
     </div>
@@ -83,6 +86,9 @@ const AppLayout = () => {
       <main className={isAdminRoute ? 'admin-main-content' : 'main-content'}>
         <Routes>
           <Route path="/" element={<ProductList />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/blog" element={<Blog />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
           <Route path="/login" element={<Login />} />

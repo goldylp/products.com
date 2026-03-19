@@ -6,7 +6,7 @@ import { getApiUrl } from '../utils/api';
 const ORDERS_PER_PAGE = 10;
 
 const MyOrders = () => {
-  const { user, getAuthHeader } = useAuth();
+  const { user, loading: authLoading, getAuthHeader } = useAuth();
   const navigate = useNavigate();
 
   const [orders, setOrders] = useState([]);
@@ -23,8 +23,12 @@ const MyOrders = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
     if (!user) {
-      navigate('/login');
+      navigate('/login', { replace: true });
       return;
     }
 
@@ -61,14 +65,14 @@ const MyOrders = () => {
       })
       .catch(err => setError(typeof err === 'string' ? err : 'Failed to load orders'))
       .finally(() => setLoading(false));
-  }, [currentPage, getAuthHeader, navigate, user]);
+  }, [authLoading, currentPage, getAuthHeader, navigate, user]);
 
   const handlePageChange = (page) => {
     if (page < 1 || page > pagination.totalPages || page === currentPage) return;
     setCurrentPage(page);
   };
 
-  if (loading) return <div className="loading">Loading your orders...</div>;
+  if (authLoading || loading) return <div className="loading">Loading your orders...</div>;
   if (error) return <div className="error">{error}</div>;
 
   return (

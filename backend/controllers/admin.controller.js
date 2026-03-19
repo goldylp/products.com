@@ -46,6 +46,7 @@ const createProduct = async (req, res) => {
       price: data.price,
       weight: data.weight || 1,
       category: data.category || 'General',
+      badge: data.badge || '',
       description: data.description || '',
       stock: data.stock || 0,
       isActive: data.isActive !== undefined ? Boolean(data.isActive) : true
