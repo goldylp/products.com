@@ -36,10 +36,10 @@ const seedAdminUser = async () => {
   const password = process.env.ADMIN_PASSWORD || 'admin123456';
 
   await AdminUser.create({
-    name: process.env.ADMIN_NAME || 'Super Admin',
+    name: process.env.ADMIN_NAME || 'Admin',
     email,
     password: await bcrypt.hash(password, 10),
-    role: 'super_admin'
+    role: 'admin'
   });
 
   console.log(`Default admin created: ${email}`);

@@ -74,18 +74,6 @@ const Contact = () => {
     return '';
   };
 
-  const validateForm = () => {
-    const nextErrors = {
-      name: validateField('name', formData.name),
-      email: validateField('email', formData.email),
-      subject: validateField('subject', formData.subject),
-      message: validateField('message', formData.message)
-    };
-
-    setErrors(nextErrors);
-    return !Object.values(nextErrors).some(Boolean);
-  };
-
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -103,33 +91,39 @@ const Contact = () => {
     event.preventDefault();
     setError('');
     setSuccess('');
-    setErrors(INITIAL_ERRORS);
 
-    if (!validateForm()) {
-      return;
-    }
+    const nextErrors = {
+      name: validateField('name', formData.name),
+      email: validateField('email', formData.email),
+      subject: validateField('subject', formData.subject),
+      message: validateField('message', formData.message)
+    };
 
-    setLoading(true);
+    setErrors(nextErrors);
 
-    try {
-      const response = await fetch(getApiUrl('/api/contact'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      const data = await response.json();
+    if (!Object.values(nextErrors).some(Boolean)) {
+      setLoading(true);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send your message');
+      try {
+        const response = await fetch(getApiUrl('/api/contact'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to send your message');
+        }
+
+        setSuccess(data.message || 'Your message has been sent successfully.');
+        setFormData(INITIAL_FORM);
+        setErrors(INITIAL_ERRORS);
+      } catch (err) {
+        setError(err.message || 'Failed to send your message');
+      } finally {
+        setLoading(false);
       }
-
-      setSuccess(data.message || 'Your message has been sent successfully.');
-      setFormData(INITIAL_FORM);
-      setErrors(INITIAL_ERRORS);
-    } catch (err) {
-      setError(err.message || 'Failed to send your message');
-    } finally {
-      setLoading(false);
     }
   };
 

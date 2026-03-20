@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -14,6 +14,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import MyOrders from './pages/MyOrders';
+import OrderDetails from './pages/OrderDetails';
+import TrackOrder from './pages/TrackOrder';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Blog from './pages/Blog';
@@ -49,7 +51,7 @@ const Footer = () => (
           <li><Link to="/contact#faq">FAQ</Link></li>
           <li><Link to="/contact">Shipping Questions</Link></li>
           <li><Link to="/contact">Returns</Link></li>
-          <li><Link to="/my-orders">Track Order</Link></li>
+          <li><Link to="/track-order">Track Order</Link></li>
           <li><Link to="/contact">Contact Us</Link></li>
         </ul>
       </div>
@@ -80,6 +82,10 @@ const AppLayout = () => {
     || location.pathname.startsWith('/users')
   );
 
+  useEffect(() => {
+    document.title = isAdminRoute ? 'HealthFuel Admin' : 'HealthFuel Store';
+  }, [isAdminRoute, location.pathname]);
+
   return (
     <div className="app">
       {!isAdminRoute && <Header />}
@@ -97,6 +103,9 @@ const AppLayout = () => {
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/verify-email/:token" element={<VerifyEmail />} />
           <Route path="/my-orders" element={<MyOrders />} />
+          <Route path="/my-orders/:orderId" element={<OrderDetails />} />
+          <Route path="/track-order" element={<TrackOrder />} />
+          <Route path="/track-order/:orderNumber" element={<TrackOrder />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
           <Route path="/admin/reset-password/:token" element={<AdminResetPassword />} />

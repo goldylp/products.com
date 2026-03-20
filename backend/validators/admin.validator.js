@@ -63,7 +63,7 @@ const validateAdminUserPayload = ({ name, email, password, role, profileImage },
   }
   if (!isValidEmail(normalizedEmail)) return { error: 'Please enter a valid email address' };
   if (password && password.length < 6) return { error: 'Password must be at least 6 characters' };
-  if (!['admin', 'super_admin'].includes(role || 'admin')) return { error: 'Please select a valid admin role' };
+  if (!['admin', 'staff'].includes(role || 'admin')) return { error: 'Please select a valid admin role' };
   if (normalizedProfileImage && !isValidImageReference(normalizedProfileImage)) return { error: 'Please provide a valid profile image URL or uploaded image path' };
 
   return {

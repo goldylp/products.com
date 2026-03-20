@@ -109,7 +109,7 @@ const MyOrders = () => {
                 {orders.map(order => (
                   <tr key={order._id}>
                     <td className="order-id-cell">
-                      <span className="order-id">#{order._id.slice(-8).toUpperCase()}</span>
+                      <span className="order-id">{order.orderNumber || `HF-${order._id.slice(-8).toUpperCase()}`}</span>
                     </td>
                     <td>
                       {new Date(order.createdAt).toLocaleDateString('en-US', {
@@ -137,7 +137,7 @@ const MyOrders = () => {
                         : '-'}
                     </td>
                     <td>
-                      <Link to={`/order-confirmation/${order._id}`} className="view-order-btn">
+                      <Link to={`/my-orders/${order._id}`} className="view-order-btn">
                         View Details
                       </Link>
                     </td>

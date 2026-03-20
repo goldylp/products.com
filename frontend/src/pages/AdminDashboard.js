@@ -29,7 +29,7 @@ const TAB_TITLES = {
   products: 'Manage Products',
   customers: 'Manage Customers',
   orders: 'Manage Orders',
-  users: 'Manage Admin Users'
+  users: 'Manage Users'
 };
 
 const ADMIN_SECTION_PATHS = {
@@ -91,7 +91,7 @@ const adminSwal = Swal.mixin({
 
 const adminToast = Swal.mixin({
   toast: true,
-  position: 'top-end',
+  position: 'top',
   showConfirmButton: false,
   timer: 4000,
   timerProgressBar: true,
@@ -778,7 +778,7 @@ const AdminDashboard = () => {
           <div className="admin-table-wrap">
             {renderTableSearch(
               'products',
-              'Search products by name, category, description, price or stock',
+              'Search Product',
               <button type="button" className="admin-secondary-btn" onClick={() => openNewView('products')}>
                 New Product
               </button>
@@ -856,7 +856,7 @@ const AdminDashboard = () => {
               </div>
             )}
             <div className="form-group full"><label>Description</label><textarea rows="4" value={productForm.description} onChange={(e) => setProductForm((prev) => ({ ...prev, description: e.target.value }))} /></div>
-            <div className="admin-form-actions"><button type="submit" className="admin-primary-btn">{productForm._id ? 'Update Product' : 'Create Product'}</button></div>
+            <div className="admin-form-actions"><button type="submit" className="admin-primary-btn">{productForm._id ? 'Update' : 'Save'}</button></div>
           </form>
         )}
       </section>
@@ -878,7 +878,7 @@ const AdminDashboard = () => {
         )}
         {isList ? (
           <div className="admin-table-wrap">
-            {renderTableSearch('customers', 'Search customers by name, email, orders, cart items or spend')}
+            {renderTableSearch('customers', 'Search Customer')}
             {paginationMeta.totalEntries ? (
               <>
                 <table className="admin-table">
@@ -910,7 +910,7 @@ const AdminDashboard = () => {
           <form className="admin-form-grid compact" onSubmit={saveCustomer}>
             <div className="form-group"><label>Name</label><input value={customerForm.name} onChange={(e) => setCustomerForm((prev) => ({ ...prev, name: e.target.value }))} required /></div>
             <div className="form-group"><label>Email</label><input value={customerForm.email} onChange={(e) => setCustomerForm((prev) => ({ ...prev, email: e.target.value }))} required /></div>
-            <div className="admin-form-actions"><button type="submit" className="admin-primary-btn">Update Customer</button></div>
+            <div className="admin-form-actions"><button type="submit" className="admin-primary-btn">{customerForm._id ? 'Update' : 'Save'}</button></div>
           </form>
         )}
       </section>
@@ -935,7 +935,7 @@ const AdminDashboard = () => {
         )}
         {isList ? (
           <div className="admin-table-wrap">
-            {renderTableSearch('orders', 'Search orders by ID, customer, status, total or shipping')}
+            {renderTableSearch('orders', 'Search Order')}
             {paginationMeta.totalEntries ? (
               <>
                 <table className="admin-table">
@@ -1036,9 +1036,9 @@ const AdminDashboard = () => {
           <div className="admin-table-wrap">
             {renderTableSearch(
               'users',
-              'Search admin users by name, email or role',
+              'Search User',
               <button type="button" className="admin-secondary-btn" onClick={() => openNewView('users')}>
-                New Admin User
+                New User
               </button>
             )}
             {paginationMeta.totalEntries ? (
@@ -1072,7 +1072,7 @@ const AdminDashboard = () => {
                 {renderPagination('users', paginationMeta)}
               </>
             ) : (
-              <div className="admin-empty-state">No admin users matched your search.</div>
+              <div className="admin-empty-state">No users matched your search.</div>
             )}
           </div>
         ) : (
@@ -1103,14 +1103,14 @@ const AdminDashboard = () => {
                 </button>
               </div>
             </div>
-            <div className="form-group"><label>Role</label><select value={adminUserForm.role} onChange={(e) => setAdminUserForm((prev) => ({ ...prev, role: e.target.value }))}><option value="admin">Admin</option><option value="super_admin">Super Admin</option></select></div>
+            <div className="form-group"><label>Role</label><select value={adminUserForm.role} onChange={(e) => setAdminUserForm((prev) => ({ ...prev, role: e.target.value }))}><option value="admin">Admin</option><option value="staff">Staff</option></select></div>
             {adminUserForm.profileImage && (
               <div className="admin-image-preview-card">
                 <span>Admin Preview</span>
                 <img src={adminUserForm.profileImage} alt={adminUserForm.name || 'Admin preview'} className="admin-avatar-preview" />
               </div>
             )}
-            <div className="admin-form-actions"><button type="submit" className="admin-primary-btn">{adminUserForm._id ? 'Update Admin User' : 'Create Admin User'}</button></div>
+            <div className="admin-form-actions"><button type="submit" className="admin-primary-btn">{adminUserForm._id ? 'Update' : 'Save'}</button></div>
           </form>
         )}
       </section>

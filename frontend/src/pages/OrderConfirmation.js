@@ -49,8 +49,8 @@ const OrderConfirmation = () => {
         {/* Order Details */}
         <div className="order-details">
           <div className="detail-row">
-            <span className="detail-label">Order ID</span>
-            <span className="detail-value" title={order._id}>#{order._id.slice(-8).toUpperCase()}</span>
+            <span className="detail-label">Order Number</span>
+            <span className="detail-value" title={order._id}>{order.orderNumber || `HF-${order._id.slice(-8).toUpperCase()}`}</span>
           </div>
           <div className="detail-row">
             <span className="detail-label">Date</span>
@@ -120,9 +120,14 @@ const OrderConfirmation = () => {
           </div>
         </div>
 
-        <Link to="/" className="continue-shopping-btn">
-          Continue Shopping
-        </Link>
+        <div className="confirmation-actions">
+          <Link to={`/track-order/${encodeURIComponent(order.orderNumber || `HF-${order._id.slice(-8).toUpperCase()}`)}`} className="continue-shopping-btn">
+            Track Order
+          </Link>
+          <Link to="/" className="continue-shopping-btn secondary">
+            Continue Shopping
+          </Link>
+        </div>
       </div>
     </div>
   );

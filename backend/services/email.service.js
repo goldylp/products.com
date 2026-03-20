@@ -144,7 +144,8 @@ const sendEmailVerificationEmail = async (email, verificationUrl, name = 'Custom
 
 const sendOrderConfirmationEmail = async (order) => {
   const transporter = createEmailTransporter();
-  const orderUrl = `${getFrontendUrl()}/order-confirmation/${order._id}`;
+  const orderUrl = `${getFrontendUrl()}/track-order/${encodeURIComponent(order.orderNumber || `HF-${String(order._id).slice(-8).toUpperCase()}`)}`;
+  const displayOrderNumber = order.orderNumber || `HF-${String(order._id).slice(-8).toUpperCase()}`;
 
   const itemsHtml = order.items.map((item) => `
     <tr>
@@ -170,16 +171,16 @@ const sendOrderConfirmationEmail = async (order) => {
   await transporter.sendMail({
     from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
     to: order.customerEmail,
-    subject: `Order Confirmed - #${order._id}`,
+    subject: `Order Confirmed - ${displayOrderNumber}`,
     html: renderEmailLayout({
-      preheader: `Your HealthFuel Store order #${order._id} has been confirmed.`,
+      preheader: `Your HealthFuel Store order ${displayOrderNumber} has been confirmed.`,
       title: 'Order confirmed',
       subtitle: 'Thank you for your order. We have received it and will begin processing it shortly.',
       bodyHtml: `
         <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:24px;">
           <div style="flex:1 1 180px; padding:16px 18px; border-radius:16px; background:#f9fafb; border:1px solid #e5e7eb;">
-            <div style="font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#6b7280; margin-bottom:6px;">Order ID</div>
-            <div style="font-size:16px; font-weight:700; color:#111827;">#${order._id}</div>
+            <div style="font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#6b7280; margin-bottom:6px;">Order Number</div>
+            <div style="font-size:16px; font-weight:700; color:#111827;">${displayOrderNumber}</div>
           </div>
           <div style="flex:1 1 180px; padding:16px 18px; border-radius:16px; background:#f9fafb; border:1px solid #e5e7eb;">
             <div style="font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#6b7280; margin-bottom:6px;">Order Date</div>
@@ -210,7 +211,7 @@ const sendOrderConfirmationEmail = async (order) => {
           </div>
         </div>
       `,
-      buttonLabel: 'View Order',
+      buttonLabel: 'Track Order',
       buttonUrl: orderUrl,
       footerNote: 'HealthFuel Store will keep you updated as your order moves through processing and shipment.'
     })
@@ -219,10 +220,14 @@ const sendOrderConfirmationEmail = async (order) => {
 
 const sendContactNotificationEmail = async ({ name, email, subject, message }) => {
   const transporter = createEmailTransporter();
-  const recipient = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const recipient = process.env.EMAIL_FROM;
+
+  if (!recipient) {
+    throw new Error('EMAIL_FROM is not configured');
+  }
 
   await transporter.sendMail({
-    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+    from: recipient,
     to: recipient,
     replyTo: email,
     subject: `New Contact Message: ${subject}`,

@@ -37,6 +37,13 @@ const orderSchema = new mongoose.Schema({
   status:        { type: String, default: 'processing' },
   createdAt:     { type: Date, default: Date.now },
   deletedAt:     { type: Date, default: null }
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+orderSchema.virtual('orderNumber').get(function orderNumberGetter() {
+  return `HF-${String(this._id).slice(-8).toUpperCase()}`;
 });
 
 module.exports = mongoose.model('Order', orderSchema);
