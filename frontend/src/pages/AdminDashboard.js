@@ -130,6 +130,7 @@ const AdminDashboard = () => {
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [averageOrders, setAverageOrders] = useState([]);
   const [adminUsers, setAdminUsers] = useState([]);
   const [leads, setLeads] = useState([]);
   const [leadFilters, setLeadFilters] = useState({
@@ -201,10 +202,11 @@ const AdminDashboard = () => {
         adminFetch('/api/leads')
       ]);
 
-      console.log('Leads data:', leadsData);
       setProducts(productsData);
       setCustomers(customersData);
       setOrders(ordersData);
+      const avg = ordersData.length > 0 ? ordersData.reduce((sum, o) => sum + Number(o.total || 0), 0) / ordersData.length : 0;
+      setAverageOrders(avg);
       setAdminUsers(adminUsersData);
       setLeads(leadsData?.leads || leadsData || []);
       setLeadCampaigns(leadsData?.filters?.campaigns || []);
@@ -225,8 +227,19 @@ const AdminDashboard = () => {
     products: products.length,
     customers: customers.length,
     orders: orders.length,
-    revenue: orders.reduce((sum, order) => sum + Number(order.total || 0), 0)
-  }), [products, customers, orders]);
+    revenue: orders.reduce((sum, order) => sum + Number(order.total || 0), 0),
+    todayRevenue: orders.filter((order) => {
+      const today = new Date();
+      const orderDate = new Date(order.createdAt);
+      return (
+        orderDate.getDate() === today.getDate() &&
+        orderDate.getMonth() === today.getMonth() &&
+        orderDate.getFullYear() === today.getFullYear()
+      );
+    }).reduce((sum, order) => sum + Number(order.total || 0), 0),
+    totalLeads: leads.length,
+    averageOrders: averageOrders
+  }), [products, customers, orders, leads, averageOrders]);
 
   const filteredProducts = useMemo(() => {
     const query = normalizeSearchValue(tableSearchQueries.products);
@@ -293,7 +306,7 @@ const AdminDashboard = () => {
 
   const filteredLeads = useMemo(() => {
     const query = normalizeSearchValue(tableSearchQueries.leads);
-    let result = leads;
+     let result = leads;
 
     if (leadFilters.campaign) {
       result = result.filter(l => l.utm_campaign === leadFilters.campaign);
@@ -316,7 +329,8 @@ const AdminDashboard = () => {
           lead.email,
           lead.phone,
           lead.utm_campaign,
-          lead.source
+          lead.source,
+          lead.totalLeads
         ].some((value) => normalizeSearchValue(value).includes(query))
       ));
     }
@@ -1404,7 +1418,10 @@ const AdminDashboard = () => {
               <div className="admin-stat-card"><span>Products</span><strong>{stats.products}</strong></div>
               <div className="admin-stat-card"><span>Customers</span><strong>{stats.customers}</strong></div>
               <div className="admin-stat-card"><span>Orders</span><strong>{stats.orders}</strong></div>
-              <div className="admin-stat-card"><span>Revenue</span><strong>{formatMoney(stats.revenue)}</strong></div>
+              <div className="admin-stat-card"><span>Total Revenue</span><strong>{formatMoney(stats.revenue)}</strong></div>
+              <div className="admin-stat-card"><span>Today Revenue</span><strong>{formatMoney(stats.todayRevenue)}</strong></div>
+              <div className="admin-stat-card"><span>Total Leads</span><strong>{stats.totalLeads}</strong></div>
+              <div className="admin-stat-card"><span>Average Order Amount</span><strong>{formatMoney(stats.averageOrders)}</strong></div>
             </div>
           </section>
         )}
