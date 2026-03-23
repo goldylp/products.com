@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { getApiUrl } from '../utils/api';
 import { isNonEmpty, isValidEmail } from '../utils/validation';
+import { getTrackingData, trackLead } from '../utils/tracking';
 import './StorePages.css';
 
 const FAQ_ITEMS = [
@@ -43,6 +44,7 @@ const Contact = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
+  const trackingData = useMemo(() => getTrackingData(), []);
 
   const validateField = (name, value) => {
     const trimmedValue = String(value ?? '').trim();
@@ -117,6 +119,21 @@ const Contact = () => {
         }
 
         setSuccess(data.message || 'Your message has been sent successfully.');
+
+        // Submit lead tracking (non-blocking)
+        fetch(getApiUrl('/api/leads'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            ...trackingData,
+            source: 'facebook'
+          })
+        }).then(() => {
+          trackLead({ content_name: 'Contact', source: trackingData.utm_campaign || 'direct' });
+        }).catch(() => {});
+
         setFormData(INITIAL_FORM);
         setErrors(INITIAL_ERRORS);
       } catch (err) {

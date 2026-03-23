@@ -20,7 +20,10 @@
       "Bash(powershell -Command \"Stop-Process -Name node -Force -ErrorAction SilentlyContinue\")",
       "Bash(sleep 3 && curl -s http://localhost:5000/api/products | head -c 500)",
       "Bash(curl -s http://localhost:5000/api/products | grep -o '\"name\":\"Fish Oil[^\"]*\",\"image\":\"[^\"]*\"')",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(find /d/products.com -type f -name *.js -o -name *.jsx -o -name *.ts -o -name *.tsx -o -name *.json)",
+      "Bash(cd /d products.com)",
+      "Bash(npm run:*)"
     ]
   }
 }

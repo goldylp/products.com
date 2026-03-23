@@ -29,7 +29,8 @@ const TAB_TITLES = {
   products: 'Manage Products',
   customers: 'Manage Customers',
   orders: 'Manage Orders',
-  users: 'Manage Users'
+  users: 'Manage Users',
+  leads: 'Manage Leads'
 };
 
 const ADMIN_SECTION_PATHS = {
@@ -37,7 +38,8 @@ const ADMIN_SECTION_PATHS = {
   products: '/products',
   customers: '/customers',
   orders: '/orders',
-  users: '/users'
+  users: '/users',
+  leads: '/leads'
 };
 
 const TABLE_PAGE_SIZE = 10;
@@ -121,13 +123,22 @@ const AdminDashboard = () => {
     products: '',
     customers: '',
     orders: '',
-    users: ''
+    users: '',
+    leads: ''
   });
 
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [orders, setOrders] = useState([]);
   const [adminUsers, setAdminUsers] = useState([]);
+  const [leads, setLeads] = useState([]);
+  const [leadFilters, setLeadFilters] = useState({
+    campaign: '',
+    status: '',
+    startDate: '',
+    endDate: ''
+  });
+  const [leadCampaigns, setLeadCampaigns] = useState([]);
 
   const [productForm, setProductForm] = useState(PRODUCT_FORM_INITIAL);
   const [customerForm, setCustomerForm] = useState(CUSTOMER_FORM_INITIAL);
@@ -153,7 +164,7 @@ const AdminDashboard = () => {
   }, [adminUser, authLoading, navigate]);
 
   useEffect(() => {
-    if (!['dashboard', 'products', 'customers', 'orders', 'users'].includes(activeTab)) {
+    if (!['dashboard', 'products', 'customers', 'orders', 'users', 'leads'].includes(activeTab)) {
       navigate('/dashboard', { replace: true });
     }
   }, [activeTab, navigate]);
@@ -182,19 +193,24 @@ const AdminDashboard = () => {
 
     setInitialLoading(true);
     try {
-      const [productsData, customersData, ordersData, adminUsersData] = await Promise.all([
+      const [productsData, customersData, ordersData, adminUsersData, leadsData] = await Promise.all([
         adminFetch('/api/admin/products'),
         adminFetch('/api/admin/customers'),
         adminFetch('/api/admin/orders'),
-        adminFetch('/api/admin/users')
+        adminFetch('/api/admin/users'),
+        adminFetch('/api/leads')
       ]);
 
+      console.log('Leads data:', leadsData);
       setProducts(productsData);
       setCustomers(customersData);
       setOrders(ordersData);
       setAdminUsers(adminUsersData);
+      setLeads(leadsData?.leads || leadsData || []);
+      setLeadCampaigns(leadsData?.filters?.campaigns || []);
       setError('');
     } catch (err) {
+      console.error('Error loading data:', err);
       setError(err.message);
     } finally {
       setInitialLoading(false);
@@ -275,19 +291,53 @@ const AdminDashboard = () => {
     ));
   }, [adminUsers, tableSearchQueries.users]);
 
+  const filteredLeads = useMemo(() => {
+    const query = normalizeSearchValue(tableSearchQueries.leads);
+    let result = leads;
+
+    if (leadFilters.campaign) {
+      result = result.filter(l => l.utm_campaign === leadFilters.campaign);
+    }
+    if (leadFilters.status) {
+      result = result.filter(l => l.status === leadFilters.status);
+    }
+    if (leadFilters.startDate) {
+      const start = new Date(leadFilters.startDate);
+      result = result.filter(l => new Date(l.createdAt) >= start);
+    }
+    if (leadFilters.endDate) {
+      const end = new Date(leadFilters.endDate + 'T23:59:59');
+      result = result.filter(l => new Date(l.createdAt) <= end);
+    }
+    if (query) {
+      result = result.filter((lead) => (
+        [
+          lead.name,
+          lead.email,
+          lead.phone,
+          lead.utm_campaign,
+          lead.source
+        ].some((value) => normalizeSearchValue(value).includes(query))
+      ));
+    }
+
+    return result;
+  }, [leads, leadFilters, tableSearchQueries.leads]);
+
   useEffect(() => {
     setTablePages((prev) => {
       const next = {
         products: Math.min(prev.products, Math.max(1, Math.ceil(filteredProducts.length / TABLE_PAGE_SIZE))),
         customers: Math.min(prev.customers, Math.max(1, Math.ceil(filteredCustomers.length / TABLE_PAGE_SIZE))),
         orders: Math.min(prev.orders, Math.max(1, Math.ceil(filteredOrders.length / TABLE_PAGE_SIZE))),
-        users: Math.min(prev.users, Math.max(1, Math.ceil(filteredAdminUsers.length / TABLE_PAGE_SIZE)))
+        users: Math.min(prev.users, Math.max(1, Math.ceil(filteredAdminUsers.length / TABLE_PAGE_SIZE))),
+        leads: Math.min(prev.leads, Math.max(1, Math.ceil(filteredLeads.length / TABLE_PAGE_SIZE)))
       };
 
       const changed = Object.keys(next).some((key) => next[key] !== prev[key]);
       return changed ? next : prev;
     });
-  }, [filteredProducts.length, filteredCustomers.length, filteredOrders.length, filteredAdminUsers.length]);
+  }, [filteredProducts.length, filteredCustomers.length, filteredOrders.length, filteredAdminUsers.length, filteredLeads.length]);
 
   const resetNotifications = () => {
     setError('');
@@ -1019,6 +1069,168 @@ const AdminDashboard = () => {
     );
   };
 
+  const renderLeadsSection = () => {
+    const paginationMeta = getPaginationMeta('leads', filteredLeads);
+
+    const formatDate = (date) => {
+      if (!date) return '-';
+      return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+
+    const handleStatusChange = async (leadId, newStatus) => {
+      try {
+        await adminFetch(`/api/leads/${leadId}/status`, {
+          method: 'PUT',
+          body: JSON.stringify({ status: newStatus })
+        });
+        setLeads(prev => prev.map(l => l._id === leadId ? { ...l, status: newStatus } : l));
+        Swal.fire('Success', 'Lead status updated', 'success');
+      } catch (err) {
+        Swal.fire('Error', err.message, 'error');
+      }
+    };
+
+    const handleDeleteLead = async (leadId) => {
+      const result = await Swal.fire({
+        title: 'Delete Lead',
+        text: 'Are you sure you want to delete this lead?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Delete',
+        cancelButtonText: 'Cancel'
+      });
+
+      if (result.isConfirmed) {
+        try {
+          await adminFetch(`/api/leads/${leadId}`, { method: 'DELETE' });
+          setLeads(prev => prev.filter(l => l._id !== leadId));
+          Swal.fire('Success', 'Lead deleted', 'success');
+        } catch (err) {
+          Swal.fire('Error', err.message, 'error');
+        }
+      }
+    };
+
+    return (
+      <section className="admin-section">
+        <div className="admin-table-wrap">
+          <div className="admin-filters-row">
+            {renderTableSearch('leads', 'Search Lead')}
+            <div className="admin-filter-group">
+              <select
+                value={leadFilters.campaign}
+                onChange={(e) => setLeadFilters(prev => ({ ...prev, campaign: e.target.value }))}
+                className="admin-filter-select"
+              >
+                <option value="">All Campaigns</option>
+                {leadCampaigns.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <select
+                value={leadFilters.status}
+                onChange={(e) => setLeadFilters(prev => ({ ...prev, status: e.target.value }))}
+                className="admin-filter-select"
+              >
+                <option value="">All Status</option>
+                <option value="new">New</option>
+                <option value="contacted">Contacted</option>
+                <option value="closed">Closed</option>
+              </select>
+              <input
+                type="date"
+                value={leadFilters.startDate}
+                onChange={(e) => setLeadFilters(prev => ({ ...prev, startDate: e.target.value }))}
+                className="admin-filter-date"
+                placeholder="Start Date"
+              />
+              <input
+                type="date"
+                value={leadFilters.endDate}
+                onChange={(e) => setLeadFilters(prev => ({ ...prev, endDate: e.target.value }))}
+                className="admin-filter-date"
+                placeholder="End Date"
+              />
+              {(leadFilters.campaign || leadFilters.status || leadFilters.startDate || leadFilters.endDate) && (
+                <button
+                  type="button"
+                  className="admin-secondary-btn"
+                  onClick={() => setLeadFilters({ campaign: '', status: '', startDate: '', endDate: '' })}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+          {paginationMeta.totalEntries ? (
+            <>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Campaign</th>
+                    <th>Source</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginationMeta.items.map((lead) => (
+                    <tr key={lead._id}>
+                      <td data-label="Name">{lead.name}</td>
+                      <td data-label="Email">{lead.email}</td>
+                      <td data-label="Phone">{lead.phone || '-'}</td>
+                      <td data-label="Campaign">{lead.utm_campaign || '-'}</td>
+                      <td data-label="Source">{lead.source}</td>
+                      <td data-label="Status">
+                        <span className={`admin-status-badge status-${lead.status}`}>
+                          {lead.status}
+                        </span>
+                      </td>
+                      <td data-label="Date">{formatDate(lead.createdAt)}</td>
+                      <td data-label="Actions">
+                        <div className="admin-table-actions">
+                          <select
+                            value={lead.status}
+                            onChange={(e) => handleStatusChange(lead._id, e.target.value)}
+                            className="admin-action-select"
+                          >
+                            <option value="new">New</option>
+                            <option value="contacted">Contacted</option>
+                            <option value="closed">Closed</option>
+                          </select>
+                          <button
+                            type="button"
+                            className="admin-action-btn delete"
+                            onClick={() => handleDeleteLead(lead._id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {renderPagination('leads', paginationMeta)}
+            </>
+          ) : (
+            <div className="admin-empty-state">No leads found</div>
+          )}
+        </div>
+      </section>
+    );
+  };
+
   const renderUsersSection = () => {
     const isList = currentTabView?.mode === 'list';
     const paginationMeta = getPaginationMeta('users', filteredAdminUsers);
@@ -1134,7 +1346,8 @@ const AdminDashboard = () => {
             ['products', 'Products'],
             ['customers', 'Customers'],
             ['orders', 'Orders'],
-            ['users', 'Users']
+            ['users', 'Users'],
+            ['leads', 'Leads']
           ].map(([key, label]) => (
             <NavLink
               key={key}
@@ -1196,6 +1409,7 @@ const AdminDashboard = () => {
           </section>
         )}
 
+        {activeTab === 'leads' && renderLeadsSection()}
         {activeTab === 'products' && renderProductsSection()}
         {activeTab === 'customers' && renderCustomersSection()}
         {activeTab === 'orders' && renderOrdersSection()}

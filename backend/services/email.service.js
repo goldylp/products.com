@@ -255,10 +255,54 @@ const sendContactNotificationEmail = async ({ name, email, subject, message }) =
   });
 };
 
+// Send lead notification to admin
+const sendLeadNotificationEmail = async ({ name, email, phone, utm_campaign }) => {
+  const transporter = createEmailTransporter();
+  const recipient = process.env.EMAIL_FROM;
+
+  if (!recipient) {
+    throw new Error('EMAIL_FROM is not configured');
+  }
+
+  await transporter.sendMail({
+    from: recipient,
+    to: recipient,
+    replyTo: email,
+    subject: `New Lead: ${name}`,
+    html: renderEmailLayout({
+      preheader: `New lead from ${name}.`,
+      title: 'New Lead Captured',
+      subtitle: 'A new lead was submitted through the website.',
+      bodyHtml: `
+        <div style="padding:20px; border:1px solid #e5e7eb; border-radius:18px; background:#f9fafb; margin-bottom:18px;">
+          <p style="margin:0 0 8px; font-size:14px; color:#6b7280;">Name</p>
+          <p style="margin:0; font-size:16px; line-height:1.7; color:#111827; font-weight:700;">${name}</p>
+        </div>
+        <div style="padding:20px; border:1px solid #e5e7eb; border-radius:18px; background:#f9fafb; margin-bottom:18px;">
+          <p style="margin:0 0 8px; font-size:14px; color:#6b7280;">Email</p>
+          <p style="margin:0; font-size:16px; line-height:1.7; color:#111827; font-weight:700;">${email}</p>
+        </div>
+        ${phone ? `
+        <div style="padding:20px; border:1px solid #e5e7eb; border-radius:18px; background:#f9fafb; margin-bottom:18px;">
+          <p style="margin:0 0 8px; font-size:14px; color:#6b7280;">Phone</p>
+          <p style="margin:0; font-size:16px; line-height:1.7; color:#111827; font-weight:700;">${phone}</p>
+        </div>` : ''}
+        ${utm_campaign ? `
+        <div style="padding:20px; border:1px solid #e5e7eb; border-radius:18px; background:#f9fafb; margin-bottom:18px;">
+          <p style="margin:0 0 8px; font-size:14px; color:#6b7280;">Campaign</p>
+          <p style="margin:0; font-size:16px; line-height:1.7; color:#111827; font-weight:700;">${utm_campaign}</p>
+        </div>` : ''}
+        <p style="margin:24px 0 0; font-size:14px; color:#6b7280;">Login to the admin panel to manage this lead.</p>
+      `
+    })
+  });
+};
+
 module.exports = {
   getFrontendUrl,
   sendPasswordResetEmail,
   sendEmailVerificationEmail,
   sendOrderConfirmationEmail,
-  sendContactNotificationEmail
+  sendContactNotificationEmail,
+  sendLeadNotificationEmail
 };

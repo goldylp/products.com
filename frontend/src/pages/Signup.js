@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import PasswordToggleIcon from '../components/PasswordToggleIcon';
 import { getApiUrl } from '../utils/api';
 import { isValidEmail } from '../utils/validation';
+import { getTrackingData, trackLead } from '../utils/tracking';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -13,6 +14,27 @@ const Signup = () => {
   const [loading, setLoading]   = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [trackingData] = useState(() => getTrackingData());
+
+  // Submit lead to tracking API (non-blocking)
+  const submitLead = async (name, email) => {
+    try {
+      await fetch(getApiUrl('/api/leads'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          email,
+          ...trackingData,
+          source: 'facebook'
+        })
+      });
+      // Track lead event
+      trackLead({ content_name: 'Signup', source: trackingData.utm_campaign || 'direct' });
+    } catch (err) {
+      console.error('Lead tracking error:', err);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -55,6 +77,9 @@ const Signup = () => {
         setError(data.error || 'Signup failed');
         return;
       }
+
+      // Submit lead tracking (non-blocking)
+      submitLead(formData.name, formData.email);
 
       setSuccess(data.message || 'Account created successfully. Please verify your email before signing in.');
       setTimeout(() => {

@@ -80,6 +80,7 @@ const AppLayout = () => {
     || location.pathname.startsWith('/customers')
     || location.pathname.startsWith('/orders')
     || location.pathname.startsWith('/users')
+    || location.pathname.startsWith('/leads')
   );
 
   useEffect(() => {
@@ -121,6 +122,7 @@ const AppLayout = () => {
           <Route path="/users" element={<AdminDashboard />} />
           <Route path="/users/new" element={<AdminDashboard />} />
           <Route path="/users/:id" element={<AdminDashboard />} />
+          <Route path="/leads" element={<AdminDashboard />} />
         </Routes>
       </main>
       {!isAdminRoute && <CartPanel />}
