@@ -41,7 +41,7 @@ A full-stack e-commerce web application built with React.js, Node.js, Express, M
 
 **backend/.env:**
 ```
-MONGODB_URI=mongodb+srv://your_username:your_password@cluster.mongodb.net/canxida_store?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://your_username:your_password@cluster.mongodb.net/products_store?retryWrites=true&w=majority
 STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
 ```
 
