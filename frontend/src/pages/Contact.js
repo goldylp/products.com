@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { getApiUrl } from '../utils/api';
-import { isNonEmpty, isValidEmail } from '../utils/validation';
+import { isNonEmpty, isValidEmail, isValidPhone } from '../utils/validation';
 import { getTrackingData, trackLead } from '../utils/tracking';
 import './StorePages.css';
 
@@ -26,6 +26,7 @@ const FAQ_ITEMS = [
 const INITIAL_FORM = {
   name: '',
   email: '',
+  phone: '',
   subject: '',
   message: ''
 };
@@ -33,6 +34,7 @@ const INITIAL_FORM = {
 const INITIAL_ERRORS = {
   name: '',
   email: '',
+  phone: '',
   subject: '',
   message: ''
 };
@@ -58,6 +60,12 @@ const Contact = () => {
     if (name === 'email') {
       if (!isNonEmpty(trimmedValue)) return 'Please enter your email address.';
       if (!isValidEmail(trimmedValue)) return 'Please enter a valid email address.';
+      return '';
+    }
+
+    if (name === 'phone') {
+      if (!isNonEmpty(trimmedValue)) return 'Please enter your phone number.';
+      if (!isValidPhone(trimmedValue)) return 'Please enter a valid phone number.';
       return '';
     }
 
@@ -97,6 +105,7 @@ const Contact = () => {
     const nextErrors = {
       name: validateField('name', formData.name),
       email: validateField('email', formData.email),
+      phone: validateField('phone', formData.phone),
       subject: validateField('subject', formData.subject),
       message: validateField('message', formData.message)
     };
@@ -120,19 +129,7 @@ const Contact = () => {
 
         setSuccess(data.message || 'Your message has been sent successfully.');
 
-        // Submit lead tracking (non-blocking)
-        fetch(getApiUrl('/api/leads'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: formData.name,
-            email: formData.email,
-            ...trackingData,
-            source: 'facebook'
-          })
-        }).then(() => {
-          trackLead({ content_name: 'Contact', source: trackingData.utm_campaign || 'direct' });
-        }).catch(() => {});
+        trackLead({ content_name: 'Contact', source: trackingData.utm_campaign || 'direct' });
 
         setFormData(INITIAL_FORM);
         setErrors(INITIAL_ERRORS);
@@ -188,18 +185,34 @@ const Contact = () => {
                 </div>
               </div>
 
-              <div className="contact-field">
-                <label htmlFor="contact-subject">Subject</label>
-                <input
-                  id="contact-subject"
-                  name="subject"
-                  value={formData.subject}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  placeholder="How can we help?"
-                  className={errors.subject ? 'is-invalid' : ''}
-                />
-                {errors.subject && <span className="contact-field-error">{errors.subject}</span>}
+              <div className="contact-form-row">
+                <div className="contact-field">
+                  <label htmlFor="contact-phone">Phone</label>
+                  <input
+                    id="contact-phone"
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="e.g. +1 555 123 4567"
+                    className={errors.phone ? 'is-invalid' : ''}
+                  />
+                  {errors.phone && <span className="contact-field-error">{errors.phone}</span>}
+                </div>
+                <div className="contact-field">
+                  <label htmlFor="contact-subject">Subject</label>
+                  <input
+                    id="contact-subject"
+                    name="subject"
+                    value={formData.subject}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="How can we help?"
+                    className={errors.subject ? 'is-invalid' : ''}
+                  />
+                  {errors.subject && <span className="contact-field-error">{errors.subject}</span>}
+                </div>
               </div>
 
               <div className="contact-field">

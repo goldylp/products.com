@@ -218,7 +218,7 @@ const sendOrderConfirmationEmail = async (order) => {
   });
 };
 
-const sendContactNotificationEmail = async ({ name, email, subject, message }) => {
+const sendContactNotificationEmail = async ({ name, email, phone, subject, message }) => {
   const transporter = createEmailTransporter();
   const recipient = process.env.EMAIL_FROM;
 
@@ -240,6 +240,7 @@ const sendContactNotificationEmail = async ({ name, email, subject, message }) =
           <p style="margin:0 0 8px; font-size:14px; color:#6b7280;">From</p>
           <p style="margin:0; font-size:16px; line-height:1.7; color:#111827; font-weight:700;">${name}</p>
           <p style="margin:6px 0 0; font-size:14px; line-height:1.7; color:#16a34a;">${email}</p>
+          ${phone ? `<p style="margin:6px 0 0; font-size:14px; line-height:1.7; color:#374151;">${phone}</p>` : ''}
         </div>
         <div style="padding:20px; border:1px solid #e5e7eb; border-radius:18px; background:#ffffff; margin-bottom:18px;">
           <p style="margin:0 0 8px; font-size:14px; color:#6b7280;">Subject</p>

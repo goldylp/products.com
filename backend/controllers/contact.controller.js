@@ -2,16 +2,18 @@ const ContactMessage = require('../models/contactMessage.model');
 const { normalizeEmail, normalizeText, isValidEmail } = require('../utils/common');
 const { sendError, sendSuccess } = require('../utils/response');
 const { sendContactNotificationEmail } = require('../services/email.service');
+const { syncContactToHubspot } = require('../services/hubspot.service');
 
 const submitContactMessage = async (req, res) => {
   try {
     const name = normalizeText(req.body.name);
     const email = normalizeEmail(req.body.email);
+    const phone = normalizeText(req.body.phone);
     const subject = normalizeText(req.body.subject);
     const message = normalizeText(req.body.message);
 
-    if (!name || !email || !subject || !message) {
-      return sendError(res, 400, 'Name, email, subject, and message are required');
+    if (!name || !email || !phone || !subject || !message) {
+      return sendError(res, 400, 'Name, email, phone, subject, and message are required');
     }
 
     if (!isValidEmail(email)) {
@@ -21,6 +23,7 @@ const submitContactMessage = async (req, res) => {
     const contactMessage = await ContactMessage.create({
       name,
       email,
+      phone,
       subject,
       message
     });
@@ -28,9 +31,14 @@ const submitContactMessage = async (req, res) => {
     await sendContactNotificationEmail({
       name,
       email,
+      phone,
       subject,
       message
     });
+
+    syncContactToHubspot({ name, email, phone, subject, message })
+      .then((result) => console.log('[HubSpot] Sync result:', result))
+      .catch((err) => console.error('[HubSpot] Sync error:', err.message));
 
     return sendSuccess(res, {
       message: 'Thanks for contacting us. Our team will get back to you shortly.',
